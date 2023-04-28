@@ -2,4 +2,3 @@
 .vscode
 
 events.npy
-flash_events.npy
