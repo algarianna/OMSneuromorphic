@@ -13,8 +13,7 @@ matplotlib.use('TkAgg')
 width = 50
 height = 50
 
-
-t = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7] # s
+t = np.arange(0, 0.1, 1)  # s
 pol = 1
 events = {"x": [], "y": [], "ts": [], "pol": [], "idx": []}
 frame = np.zeros((width, height))
@@ -22,8 +21,15 @@ plt.figure()
 num_e = 2000
 
 for ts in t:
-    x_sample = np.random.choice(np.arange(width),  size=num_e)
-    y_sample = np.random.choice(np.arange(height), size=num_e)
+    x_sample = np.random.choice(np.arange(width), size=num_e)
+    y_sample = [random.randint(height)]
+    for i in np.arange(num_e - 1) + 1:
+        y_tmp = random.randint(height)
+        if y_tmp in y_sample and x_sample[y_sample.index(y_tmp)] == x_sample[i]:
+            i = i-2
+        else:
+            y_sample.append(y_tmp)
+
     for i in np.arange(len(x_sample)):
         # events is a list of tuples: (x position, y position, time in seconds, on/off polarity)
         # creating events
@@ -45,17 +51,4 @@ for ts in t:
     plt.pause(0.5)
     frame = np.zeros((width, height))
 
-np.save("events.npy", events)
-
-
-
-
-# for t in np.arange(len(events['x'])):
-#     if events['ts'][idx] < t_period:
-#         frame[(events['y'][idx], events['x'][idx])] = 1
-#     else:
-#         ax.matshow(frame)  # or ax.imshow(frame)
-#         plt.draw()
-#         plt.pause(0.1)
-#         frame = np.zeros((height, width))
-#         frame[(events['y'][idx], events['x'][idx])] = 1
+np.save("new_events.npy", events)

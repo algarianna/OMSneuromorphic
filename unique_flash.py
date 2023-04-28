@@ -25,10 +25,10 @@ plt.figure()
 num_e = 2000
 
 for ts in t:
-    x_sample = np.random.choice(np.arange(width), size = 2000)
-    y_sample = np.random.choice(np.arange(height), size = 2000)
-    coordinates_sample = np.column_stack((x_sample, y_sample))
-    coordinates = np.unique(coordinates_sample, axis=0)
+    x_sample = np.random.choice(np.arange(width), size = num_e)
+    y_sample = np.random.choice(np.arange(height), size = num_e)
+    coordinates_sample = np.column_stack((x_sample, y_sample))   # NEW: matrix(num_e, 2) containing the coordinates of the events 
+    coordinates = np.unique(coordinates_sample, axis=0)          # NEW: matrix containing all unique coordinates to avoid multiple simultaneous events happening the same coordinates 
     for i in np.arange(np.size(coordinates,0)):
         # events is a list of tuples: (x position, y position, time in seconds, on/off polarity)
         # creating events
@@ -50,3 +50,5 @@ for ts in t:
     plt.draw()
     plt.pause(0.1)
     frame = np.zeros((width, height))
+
+np.save("flash_events.npy", events)
