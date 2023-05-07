@@ -9,10 +9,11 @@ from numpy import random
 matplotlib.use('TkAgg')
 
 # camera resolution
+# camera resolution
 width = 50
 height = 50
 
-t = np.arange(0, 1, 0.1)  # s
+t = np.arange(0, 3, 0.1)  # s
 pol = 1
 events_percentage = 75  # % percentage of the total number of possible events to occur at each timestamp
 num_events = round(height * width * events_percentage / 100)  # number of occurring events at each timestamp
@@ -46,7 +47,7 @@ for ts in t:
         events['idx'].append(coor_sample[i][0] * height + coor_sample[i][1])
         frame[coor_sample[i][1], coor_sample[i][0]] = 1
 
- # Visualization
+# Visualization
     plt.imshow(frame)
     plt.draw()
     plt.pause(0.1)
