@@ -28,9 +28,9 @@ events = {"x": [], "y": [], "ts": [], "pol": [], "idx": []}
 for x in np.arange(width):
     np.random.shuffle(y_array)
     if l < x < (width - l):
-        time_window = np.arange(0, (1 / v), (0.1 / 2 * height))  # 100 timepoints for 100 events
+        time_window = np.arange(0, (1 / v), ((1 / v) / 2 * height))  # 100 timepoints for 100 events
     else:
-        time_window = np.arange(0, (1 / v), (0.1 / height))  # 50 timepoints for 50 events
+        time_window = np.arange(0, (1 / v), ((1 / v) / height))  # 50 timepoints for 50 events
     np.random.shuffle(time_window)
     t = x / v  # starting time-point at each shift but probably useless
     dt = 0  # index to get time_window timepoints
