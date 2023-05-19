@@ -2,9 +2,6 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 from numpy import random
-from tempfile import TemporaryFile
-import time
-import os
 
 # os.system('cls')
 matplotlib.use('TkAgg')
@@ -12,9 +9,9 @@ matplotlib.use('TkAgg')
 # camera resolution
 width = 50
 height = 50
-v = 10  # px/s
+v = 5  # px/s
 t_period = 0.1  # s
-l = 5
+l: int = 5
 
 # white bar on dark background
 pol = [1, 0]
@@ -23,25 +20,15 @@ pol = [0, 1]
 idx = 0
 y_array = np.arange(height)
 events = {"x": [], "y": [], "ts": [], "pol": [], "idx": []}
-for x in np.arange(width):
-    np.random.shuffle(y_array)
+for x in np.arange(l):
+    # np.random.shuffle(y_array)
     for y in y_array:
         # events is a list of tuples: (x position, y position, time in seconds, on/off polarity)
         t = x / v  # s
         # creating events
-        # x
-        events['x'].append(x)
-        # y
-        events['y'].append(y)
-        # ts
-        events['ts'].append(t)
-        # pol
-        events['pol'].append(pol[1])
-        # idx
-        events['idx'].append(x * height + y)
-        if l < x < (width - l):
+        for i in np.arange(np.floor(width/(2*l)), dtype=int):
             # x
-            events['x'].append(x - l)
+            events['x'].append((x + i*2*l))
             # y
             events['y'].append(y)
             # ts
@@ -49,7 +36,18 @@ for x in np.arange(width):
             # pol
             events['pol'].append(pol[1])
             # idx
-            events['idx'].append((x - l) * height + y)
+            events['idx'].append((x + i*l) * height + y)
+            # if l < x + i*2*l < (width - l):
+            #     # x
+            #     events['x'].append(x + i*2*l - l)
+            #     # y
+            #     events['y'].append(y)
+            #     # ts
+            #     events['ts'].append(t)
+            #     # pol
+            #     events['pol'].append(pol[0])
+            #     # idx
+            #     events['idx'].append((x + i*2*l - l) * height + y)
 
 # outfile = TemporaryFile()
 np.save("events.npy", events)
