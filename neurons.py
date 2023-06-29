@@ -178,6 +178,7 @@ if __name__ == "__main__":
 
     RF_spike_mon = SpikeMonitor(RF)
     RF_state_mon = StateMonitor(RF, 'v', record=True)  # Recording state variable v during a run
+    RF_fr_mon = PopulationRateMonitor(RF[:1])
 
     A_spike_mon = SpikeMonitor(A)  # Recording spikes
     A_state_mon = StateMonitor(A, 'v', record=True)  # Recording state variable v during a run
@@ -251,7 +252,15 @@ if __name__ == "__main__":
 
     figure()
     RF_cell = 0
-    plt.plot(RF_state_mon.t / ms, RF_state_mon.v[RF_cell], 'r')
+    plt.plot(RF_fr_mon.t / ms, RF_fr_mon.rate / Hz)
+    xlabel('Time [ms]')
+    ylabel('Firing rate [Hz] ')
+    title('Input cell #' + str(RF_cell) + ' firing rate')
+
+
+
+    figure()
+    plt.plot(RF_state_mon.t/ ms, RF_state_mon.v[RF_cell], 'r')
     xlabel('Time [ms]')
     ylabel('Voltage ')
     # ylim(top=10)
