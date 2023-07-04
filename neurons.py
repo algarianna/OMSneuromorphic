@@ -9,18 +9,18 @@ matplotlib.use('TkAgg')
 
 # # Visualizing connectivity
 def visualise_syn_connectivity(synapse, pre, post):
-    Ns = len(synapse.source)
-    Nt = len(synapse.target)
+    ns = len(synapse.source)
+    nt = len(synapse.target)
     figure(figsize=(25, 8))
 
-    plot(zeros(Ns), arange(Ns), 'ok', ms=10)
-    plot(ones(Nt), arange(Nt), 'ok', ms=10)
+    plot(zeros(ns), arange(ns), 'ok', ms=10)
+    plot(ones(nt), arange(nt), 'ok', ms=10)
     for i, j in zip(synapse.i, synapse.j):
         plot([0, 1], [i, j], '-k')
     xticks([0, 1], [pre, post])
     ylabel('Neuron index')
     xlim(-0.1, 1.1)
-    ylim(-1, max(Ns, Nt))
+    ylim(-1, max(ns, nt))
     plt.show()
 
 
@@ -100,6 +100,39 @@ def view_spikes(width, spike_times):
     #         if t > spikes[i][0]
     return spikes, centers, xx, yy, radius
 
+
+def plot_mean_firing_rate(spike_train, bin_size):
+    """
+    Plots the mean firing rate of a neuron given a spike train.
+
+    Parameters:
+        spike_train (numpy array): Array containing the spike times of the neuron.
+        bin_size (float): Size of the time bins in which spikes will be counted (in seconds).
+    """
+    # Calculate the number of bins
+    num_bins = int(np.ceil(spike_train[-1] / bin_size))
+
+    # Create an array to hold the spike counts in each bin
+    spike_counts = np.zeros(num_bins)
+
+    # Iterate over each spike and increment the corresponding bin
+    for spike in spike_train:
+        bin_index = int(spike / bin_size)
+        spike_counts[bin_index] += 1
+
+    # Calculate the mean firing rate in each bin
+    mean_firing_rate = spike_counts / bin_size
+
+    # Create an array of time points for the x-axis of the plot
+    time_points = np.arange(num_bins) * bin_size
+
+    # Plot the mean firing rate
+    plt.plot(time_points, mean_firing_rate)
+    plt.xlabel('Time (s)')
+    plt.ylabel('Mean Firing Rate (Hz)')
+    plt.title('Mean Firing Rate of Neuron')
+    plt.show()
+
 def mindiff(arr, n):
     # Sort array in non-decreasing order
     arr = sorted(arr)
@@ -122,7 +155,7 @@ if __name__ == "__main__":
     # t_period = round(time / len(coordinates), 4)   # second
     # t_period = 1/8 * second
     # events = create_events(coordinates, height, time)
-    events = np.load("events.npy", allow_pickle='TRUE').item()
+    events = np.load("events.npy", allow_pickle = 'TRUE').item()
     # visualisation(height, width, events, t_period)
 
     DVS = SpikeGeneratorGroup(N, events['idx'], events['ts'] * second, dt=10*usecond)
@@ -156,12 +189,32 @@ if __name__ == "__main__":
 
     # visualise_syn_connectivity(S_DVS_RF, 'DVS', 'RF')
 
-    A_thr = 6
-    A = NeuronGroup(1, eqs, threshold='v>A_thr', method='exact')  # refractory=3*ms
-    A.tau = 100 * ms
+    # Amacrine cell dedicated to suppress slow coherent stimuli
+    A_s_thr = 4
+    A_s = NeuronGroup(1, eqs, threshold='v>A_s_thr', method='exact')  # refractory=3*ms
+    A_s.tau = 100 * ms
 
-    RF_to_A = Synapses(RF, A, on_pre='v_post +=0.02')
-    RF_to_A.connect()
+    # Amacrine cell dedicated to suppress medium-speed coherent stimuli
+    A_m_thr = 6
+    A_m = NeuronGroup(1, eqs, threshold='v>A_m_thr', method='exact')  # refractory=3*ms
+    A_m.tau = 100 * ms
+
+    # Amacrine cell dedicated to suppress fast coherent stimuli
+    A_f_thr = 6
+    A_f = NeuronGroup(1, eqs, threshold='v>A_m_thr', method='exact')  # refractory=3*ms
+    A_f.tau = 100 * ms
+
+    # Synapse between RF cells and Amacrine - slow
+    RF_to_A_s = Synapses(RF, A_s, on_pre='v_post +=0.02')
+    RF_to_A_s.connect()
+
+    # Synapse between RF cells and Amacrine - medium
+    RF_to_A_m = Synapses(RF, A_m, on_pre='v_post +=0.02')
+    RF_to_A_m.connect()
+
+    # Synapse between RF cells and Amacrine - fast
+    RF_to_A_f = Synapses(RF, A_f, on_pre='v_post +=0.02')
+    RF_to_A_f.connect()
 
     OMS_thr = 2
     OMS = NeuronGroup(RF_N, eqs, threshold='v>OMS_thr', reset='v=0', method='exact')  # refractory=3*ms
@@ -169,22 +222,42 @@ if __name__ == "__main__":
 
     RF_to_OMS = Synapses(RF, OMS, on_pre='v_post +=1')
     RF_to_OMS.connect('i==j')
-    RF_to_OMS.delay = 100*ms
+    RF_to_OMS.delay = 100 * ms
 
-    A_to_OMS = Synapses(A, OMS, on_pre='v_post +=-1')
-    A_to_OMS.connect()
+    # Synapse between Amacrine - slow and OMS cells
+    A_s_to_OMS = Synapses(A_s, OMS, on_pre='v_post +=-1')
+    A_s_to_OMS.connect()
+
+    # Synapse between Amacrine - medium and OMS cells
+    A_m_to_OMS = Synapses(A_m, OMS, on_pre='v_post +=-1')
+    A_m_to_OMS.connect()
+
+    # Synapse between Amacrine - fast and OMS cells
+    A_f_to_OMS = Synapses(A_f, OMS, on_pre='v_post +=-1')
+    A_f_to_OMS.connect()
 
     DVS_spike_mon = SpikeMonitor(DVS)
 
     RF_spike_mon = SpikeMonitor(RF)
     RF_state_mon = StateMonitor(RF, 'v', record=True)  # Recording state variable v during a run
-    RF_fr_mon = PopulationRateMonitor(RF[:1])
+    RF_fr_mon = PopulationRateMonitor(RF)
 
-    A_spike_mon = SpikeMonitor(A)  # Recording spikes
-    A_state_mon = StateMonitor(A, 'v', record=True)  # Recording state variable v during a run
+    A_s_spike_mon = SpikeMonitor(A_s)  # Recording spikes
+    A_s_state_mon = StateMonitor(A_s, 'v', record=True)  # Recording state variable v during a run
+    A_s_fr_mon = PopulationRateMonitor(A_s)
+
+    A_m_spike_mon = SpikeMonitor(A_m)  # Recording spikes
+    A_m_state_mon = StateMonitor(A_m, 'v', record=True)  # Recording state variable v during a run
+    A_m_fr_mon = PopulationRateMonitor(A_m)
+
+    A_f_spike_mon = SpikeMonitor(A_f)  # Recording spikes
+    A_f_state_mon = StateMonitor(A_f, 'v', record=True)  # Recording state variable v during a run
+    A_f_fr_mon = PopulationRateMonitor(A_f)
 
     OMS_spike_mon = SpikeMonitor(OMS)  # Recording spikes
     OMS_state_mon = StateMonitor(OMS, 'v', record=True)  # Recording state variable v during a run
+    OMS_fr_mon = PopulationRateMonitor(OMS)
+
 
     sim_time = 400 * ms
     run(sim_time)
@@ -250,43 +323,76 @@ if __name__ == "__main__":
     #     RF_frame = np.zeros((width, width))
     #     OMS_frame = np.zeros((width, width))
 
-    figure()
+    amacrines, ((ax1, ax2, ax3, ax4, ax5), (ax6, ax7, ax8, ax9, ax10)) = plt.subplots(2, 5, figsize=(25, 10))
+    amacrines.suptitle('Grating, v = 60 px/s')
+    # RF 1 cell voltage plot
     RF_cell = 0
-    plt.plot(RF_fr_mon.t / ms, RF_fr_mon.rate / Hz)
-    xlabel('Time [ms]')
-    ylabel('Firing rate [Hz] ')
-    title('Input cell #' + str(RF_cell) + ' firing rate')
+    ax1.plot(RF_state_mon.t / ms, RF_state_mon.v[RF_cell], 'r')
+    # ax1.set_xlabel('Time [ms]')
+    ax1.set_ylabel('Voltage ')
+    ax1.set_ylim(top=10)
+    ax1.set_title('Input cell #' + str(RF_cell) + ' voltage')
+    ax1.axhline(RF_thr, ls='--', c='C2', lw=2)
 
+    # RF 1 cell FR plot
+    ax6.plot(RF_fr_mon.t / ms, RF_fr_mon.rate / Hz)
+    ax6.set_xlabel('Time [ms]')
+    ax6.set_ylabel('Firing rate [Hz] ')
+    ax6.set_title('Input cell #' + str(RF_cell) + ' firing rate')
 
+    # Amacrine (slow) voltage plot
+    ax2.plot(A_s_state_mon.t/ms, A_s_state_mon.v[0], 'r')
+    # ax2.set_xlabel('Time [ms]')
+    # ax2.set_ylabel('Voltage ')
+    ax2.set_ylim(top=10)
+    ax2.set_title('Amacrine (slow) cell voltage')
+    ax2.axhline(A_s_thr, ls='--', c='C2', lw=2)
 
-    figure()
-    plt.plot(RF_state_mon.t/ ms, RF_state_mon.v[RF_cell], 'r')
-    xlabel('Time [ms]')
-    ylabel('Voltage ')
-    # ylim(top=10)
-    title('Input cell #' + str(RF_cell) +' voltage')
-    axhline(RF_thr, ls='--', c='C2', lw=2)
-    plt.show()
+    ax3.plot(A_m_state_mon.t / ms, A_m_state_mon.v[0], 'r')
+    # ax3.set_xlabel('Time [ms]')
+    # ax3.set_ylabel('Voltage ')
+    ax3.set_ylim(top=10)
+    ax3.set_title('Amacrine (medium) cell voltage')
+    ax3.axhline(A_m_thr, ls='--', c='C2', lw=2)
 
-    figure()
-    plt.plot(A_state_mon.t/ms, A_state_mon.v[0], 'r')
-    xlabel('Time [ms]')
-    ylabel('Voltage ')
-    ylim(top=10)
-    title('Amacrine cell voltage')
-    axhline(A_thr, ls='--', c='C2', lw=2)
-    plt.show()
+    ax4.plot(A_f_state_mon.t / ms, A_f_state_mon.v[0], 'r')
+    # ax4.set_xlabel('Time [ms]')
+    # ax4.set_ylabel('Voltage ')
+    ax4.set_ylim(top=10)
+    ax4.set_title('Amacrine (fast) cell voltage')
+    ax4.axhline(A_f_thr, ls='--', c='C2', lw=2)
 
-    figure()
+    ax7.plot(A_s_fr_mon.t / ms, A_s_fr_mon.rate / Hz)
+    ax7.set_xlabel('Time [ms]')
+    # ax7.set_ylabel('Firing rate [Hz] ')
+    ax7.set_title('Amacrine (slow) firing rate')
+
+    ax8.plot(A_m_fr_mon.t / ms, A_m_fr_mon.rate / Hz)
+    ax8.set_xlabel('Time [ms]')
+    # ax8.set_ylabel('Firing rate [Hz] ')
+    ax8.set_title('Amacrine (medium) firing rate')
+
+    ax9.plot(A_f_fr_mon.t / ms, A_f_fr_mon.rate / Hz)
+    ax9.set_xlabel('Time [ms]')
+    # ax9.set_ylabel('Firing rate [Hz] ')
+    ax9.set_title('Amacrine (fast) firing rate')
+
 # for i in arange(RF_N):
     cell = 0
-    plt.plot(OMS_state_mon.t / ms, OMS_state_mon.v[cell], 'r')
-    xlabel('Time [ms]')
-    ylabel('Voltage ')
-    ylim(-6, +6)
-    title('Output cell #'+str(cell)+'  voltage')
-    axhline(OMS_thr, ls='--', c='C2', lw=2)
+    ax5.plot(OMS_state_mon.t / ms, OMS_state_mon.v[cell], 'r')
+    # ax5.set_xlabel('Time [ms]')
+    # ax5.set_ylabel('Voltage ')
+    ax5.set_ylim(-6, +6)
+    ax5.set_title('Output cell #'+str(cell)+'  voltage')
+    ax5.axhline(OMS_thr, ls='--', c='C2', lw=2)
+
+    ax10.plot(OMS_fr_mon.t / ms, OMS_fr_mon.rate / Hz)
+    ax10.set_xlabel('Time [ms]')
+    # ax10.set_ylabel('Firing rate [Hz] ')
+    ax10.set_title('OMS cell #' + str(cell) + ' firing rate')
+
     plt.show()
+
     k = 0
 
 
