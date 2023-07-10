@@ -164,7 +164,8 @@ if __name__ == "__main__":
     I : 1
     tau : second
     '''
-    RF_size: int = width//5  # RFs pixel size is 2x2
+    RF_per_row = 5
+    RF_size: int = width//5  # RFs pixel size is RF_size x RF_size
     RF_N = N // (RF_size ** 2)  # number of RFs
     RF_perc = 0.75
     RF_active = round(RF_size ** 2 * RF_perc)
@@ -222,10 +223,10 @@ if __name__ == "__main__":
 
     RF_to_OMS = Synapses(RF, OMS, on_pre='v_post +=1')
     RF_to_OMS.connect('i==j')
-    RF_to_OMS.delay = 100 * ms
+    RF_to_OMS.delay =150 * ms
 
     # Synapse between Amacrine - slow and OMS cells
-    A_s_to_OMS = Synapses(A_s, OMS, on_pre='v_post +=-1')
+    A_s_to_OMS = Synapses(A_s, OMS, on_pre='v_post +=-1.5')
     A_s_to_OMS.connect()
 
     # Synapse between Amacrine - medium and OMS cells
@@ -259,7 +260,7 @@ if __name__ == "__main__":
     OMS_fr_mon = PopulationRateMonitor(OMS)
 
 
-    sim_time = 400 * ms
+    sim_time = 100 * ms
     run(sim_time)
     # for i in np.arange(RF_num):
     #     figure()
@@ -273,7 +274,36 @@ if __name__ == "__main__":
     #     axvline(t / ms, ls='--', c='C1', lw=3)
     #     axhline(RF_thr, ls=':', c='C2', lw=3)
 
+    DVS_spikes = DVS_spike_mon.spike_trains()
+
+    dvs, ax = plt.subplots(width, height)
+    for idx in np.arange(width):
+        for idy in np.arange(height):
+            ax[idx, idy].vlines(DVS_spikes[idx + idy * height], 0, 1)
+            ax[idx, idy].set_xticks([])
+            ax[idx, idy].set_yticks([])
+            ax[idx, idy].set_xlim(0, sim_time / second)
+            # ax[idx, idy].axis('off')
+    dvs.show()
+
+
+    # figure()
+    # plt.plot(DVS_spike_mon.i, DVS_spike_mon.t / ms, '.')
+    # ylim(0, 2500)
+    # xlim(0, sim_time)
+
     RF_spike_times = RF_spike_mon.spike_trains()
+
+    rf, ax = plt.subplots(RF_per_row, RF_per_row)
+    for idx in np.arange(RF_per_row):
+        for idy in np.arange(RF_per_row):
+            ax[idx, idy].vlines(RF_spike_times[idx + idy * RF_per_row], 0, 1)
+            ax[idx, idy].set_xticks([])
+            ax[idx, idy].set_yticks([])
+            ax[idx, idy].set_xlim(0, sim_time / second)
+            # ax[idx, idy].axis('off')
+    rf.show()
+
     RF_spikes, RF_centers, xx, yy, radius = view_spikes(width, RF_spike_times)
 
     OMS_spike_times = OMS_spike_mon.spike_trains()
@@ -323,8 +353,8 @@ if __name__ == "__main__":
     #     RF_frame = np.zeros((width, width))
     #     OMS_frame = np.zeros((width, width))
 
-    amacrines, ((ax1, ax2, ax3, ax4, ax5), (ax6, ax7, ax8, ax9, ax10)) = plt.subplots(2, 5, figsize=(25, 10))
-    amacrines.suptitle('Grating, v = 60 px/s')
+    amacrines, ((ax1, ax2, ax3, ax5), (ax6, ax7, ax8, ax10)) = plt.subplots(2, 4, figsize=(25, 10))
+    amacrines.suptitle('Grating, v = 30 px/s')
     # RF 1 cell voltage plot
     RF_cell = 0
     ax1.plot(RF_state_mon.t / ms, RF_state_mon.v[RF_cell], 'r')
@@ -355,12 +385,12 @@ if __name__ == "__main__":
     ax3.set_title('Amacrine (medium) cell voltage')
     ax3.axhline(A_m_thr, ls='--', c='C2', lw=2)
 
-    ax4.plot(A_f_state_mon.t / ms, A_f_state_mon.v[0], 'r')
-    # ax4.set_xlabel('Time [ms]')
-    # ax4.set_ylabel('Voltage ')
-    ax4.set_ylim(top=10)
-    ax4.set_title('Amacrine (fast) cell voltage')
-    ax4.axhline(A_f_thr, ls='--', c='C2', lw=2)
+    # ax4.plot(A_f_state_mon.t / ms, A_f_state_mon.v[0], 'r')
+    # # ax4.set_xlabel('Time [ms]')
+    # # ax4.set_ylabel('Voltage ')
+    # ax4.set_ylim(top=10)
+    # ax4.set_title('Amacrine (fast) cell voltage')
+    # ax4.axhline(A_f_thr, ls='--', c='C2', lw=2)
 
     ax7.plot(A_s_fr_mon.t / ms, A_s_fr_mon.rate / Hz)
     ax7.set_xlabel('Time [ms]')
@@ -372,10 +402,10 @@ if __name__ == "__main__":
     # ax8.set_ylabel('Firing rate [Hz] ')
     ax8.set_title('Amacrine (medium) firing rate')
 
-    ax9.plot(A_f_fr_mon.t / ms, A_f_fr_mon.rate / Hz)
-    ax9.set_xlabel('Time [ms]')
-    # ax9.set_ylabel('Firing rate [Hz] ')
-    ax9.set_title('Amacrine (fast) firing rate')
+    # ax9.plot(A_f_fr_mon.t / ms, A_f_fr_mon.rate / Hz)
+    # ax9.set_xlabel('Time [ms]')
+    # # ax9.set_ylabel('Firing rate [Hz] ')
+    # ax9.set_title('Amacrine (fast) firing rate')
 
 # for i in arange(RF_N):
     cell = 0
