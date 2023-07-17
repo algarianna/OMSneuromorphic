@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from brian2 import *
 from brian2tools import *
+import itertools
 import random
 
 matplotlib.use('TkAgg')
@@ -71,7 +72,7 @@ def view_spikes(width, spike_times):
     xx, yy = np.meshgrid(x, y)
 
     # Neurons arrangement
-    neurons = [round(sqrt(N_neurons)), round(sqrt(N_neurons))]
+    neurons = [np.int_(np.sqrt(N_neurons)), np.int_(np.sqrt(N_neurons))]
 
     # Generate the circle mask
     radius = RF_size // 2  # Radius of the circle
@@ -82,14 +83,13 @@ def view_spikes(width, spike_times):
     centers_x = np.linspace(width/neurons[0]/2, width - radius - (width/neurons[0]/2), neurons[0], endpoint = 'true')
     centers_y = np.linspace(width/neurons[0]/2, width - radius - (width/neurons[0]/2), neurons[1], endpoint = 'true')
 
-    centers = []
-    for x in centers_x:
-        for y in centers_y:
-            centers.append((x, y))
+    centers = [(x,y) for x in centers_x for y in centers_y]
+
+    # np.array((centers_x, centers_y)).T
 
     spikes = []
-    for i in arange(len(spike_times)):
-        for j in arange(len(spike_times[i])):
+    for i in np.arange(len(spike_times)):
+        for j in np.arange(len(spike_times[i])):
             spikes.append((spike_times[i][j], i))
     spikes.sort()
 
@@ -164,35 +164,38 @@ if __name__ == "__main__":
     I : 1
     tau : second
     '''
-    RF_per_row = 5
-    RF_size: int = width//5  # RFs pixel size is RF_size x RF_size
+    RF_per_row = 50
+    RF_size: int = width//RF_per_row  # RFs pixel size is RF_size x RF_size
     RF_N = N // (RF_size ** 2)  # number of RFs
     RF_perc = 0.75
     RF_active = round(RF_size ** 2 * RF_perc)
-    RF_thr = 5
+    RF_thr = 0.2
     # Adding a threshold and the reset to 0 after a spike. (to add RP : refractory  = 3*ms)
     RF = NeuronGroup(RF_N, eqs, threshold='v>RF_thr', reset='v=0', method='exact')
     RF.tau = 100 * ms
-    S_DVS_RF = Synapses(DVS, RF, on_pre='v_post +=1')
 
     # Down sampling from DVS to RF
-    idx = []  # pre synaptic neuron indexes
-    for a in np.arange(0, height * (height - RF_size) + 1, RF_size * height):
-        for b in np.arange(a, a + height - RF_size + 1, RF_size):
-            for c in np.arange(RF_size):
-                for cc in np.arange(RF_size):
-                    idx.append(b + c * height + cc)
-    idx = np.array(idx)
-    idx = np.resize(idx, (RF_N, RF_size**2))
-    print(idx)
-    for c in np.arange(RF_N):
-        S_DVS_RF.connect(i=idx[c], j=c)
+    indexes = []  # pre synaptic neuron indexes
+    for a in np.arange(0, height * (height - RF_size) + 1, RF_size * height):  # Calculating the starting index for
+        # each sample column
+        for b in np.arange(a, a + height - RF_size + 1, RF_size): # Calculating the starting index for
+        # each sample row
+            for c in np.arange(RF_size):  # Going over RF width
+                for cc in np.arange(RF_size):  # Going over RF height
+                    indexes.append(b + c * height + cc)  # All indexes in each sample
+    indexes = np.array(indexes)
+    indexes = np.resize(indexes, (RF_N, RF_size**2))
 
-    # visualise_syn_connectivity(S_DVS_RF, 'DVS', 'RF')
+    S_DVS_RF = Synapses(DVS, RF, on_pre='v_post +=1')
+
+    for rf in np.arange(RF_N):
+        S_DVS_RF.connect(i=indexes[rf], j=rf)
+
+    visualise_syn_connectivity(S_DVS_RF, 'DVS', 'RF')
 
     # Amacrine cell dedicated to suppress slow coherent stimuli
     A_s_thr = 4
-    A_s = NeuronGroup(1, eqs, threshold='v>A_s_thr', method='exact')  # refractory=3*ms
+    A_s = NeuronGroup(1, eqs, threshold='v>A_s_thr', reset='v=0', method='exact')  # refractory=3*ms
     A_s.tau = 100 * ms
 
     # Amacrine cell dedicated to suppress medium-speed coherent stimuli
@@ -202,7 +205,7 @@ if __name__ == "__main__":
 
     # Amacrine cell dedicated to suppress fast coherent stimuli
     A_f_thr = 6
-    A_f = NeuronGroup(1, eqs, threshold='v>A_m_thr', method='exact')  # refractory=3*ms
+    A_f = NeuronGroup(1, eqs, threshold='v>A_m_thr', reset='v=0', method='exact')  # refractory=3*ms
     A_f.tau = 100 * ms
 
     # Synapse between RF cells and Amacrine - slow
@@ -259,10 +262,9 @@ if __name__ == "__main__":
     OMS_state_mon = StateMonitor(OMS, 'v', record=True)  # Recording state variable v during a run
     OMS_fr_mon = PopulationRateMonitor(OMS)
 
-
     sim_time = 100 * ms
     run(sim_time)
-    # for i in np.arange(RF_num):
+    # for i in np.arange(RF_N):
     #     figure()
     #     plot(RF_state_mon.t / ms, RF_state_mon.v[i], label='RF ' + str(i + 1))
     #     print(max(RF_state_mon.v[i]))
@@ -276,7 +278,9 @@ if __name__ == "__main__":
 
     DVS_spikes = DVS_spike_mon.spike_trains()
 
+    # DVS spikes visualization
     dvs, ax = plt.subplots(width, height)
+    dvs.suptitle("DVS Spikes")
     for idx in np.arange(width):
         for idy in np.arange(height):
             ax[idx, idy].vlines(DVS_spikes[idx + idy * height], 0, 1)
@@ -294,7 +298,9 @@ if __name__ == "__main__":
 
     RF_spike_times = RF_spike_mon.spike_trains()
 
+    # RF spikes visualization
     rf, ax = plt.subplots(RF_per_row, RF_per_row)
+    rf.suptitle('RF Spikes')
     for idx in np.arange(RF_per_row):
         for idy in np.arange(RF_per_row):
             ax[idx, idy].vlines(RF_spike_times[idx + idy * RF_per_row], 0, 1)
@@ -322,7 +328,7 @@ if __name__ == "__main__":
     # idxx = 0
     # idxxx = 0
     # for t in np.arange(0.0, sim_time, 5e-03*second):
-    #     if idx < len(events['ts']):
+    #     if idx < max(events['idx']):
     #         while (events['ts'][idx] * second) < t:
     #             frame[(events['y'][idx], events['x'][idx])] = 1
     #             idx+=1
@@ -356,7 +362,7 @@ if __name__ == "__main__":
     amacrines, ((ax1, ax2, ax3, ax5), (ax6, ax7, ax8, ax10)) = plt.subplots(2, 4, figsize=(25, 10))
     amacrines.suptitle('Grating, v = 30 px/s')
     # RF 1 cell voltage plot
-    RF_cell = 0
+    RF_cell = 16
     ax1.plot(RF_state_mon.t / ms, RF_state_mon.v[RF_cell], 'r')
     # ax1.set_xlabel('Time [ms]')
     ax1.set_ylabel('Voltage ')
@@ -422,7 +428,5 @@ if __name__ == "__main__":
     ax10.set_title('OMS cell #' + str(cell) + ' firing rate')
 
     plt.show()
-
-    k = 0
 
 
