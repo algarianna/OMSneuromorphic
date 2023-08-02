@@ -2,16 +2,17 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 from numpy import random
+import pandas as pd
 
 # os.system('cls')
 matplotlib.use('TkAgg')
 
-# camera resolution
-width = 50
-height = 50
-v = 142  # px/s  50 - 142 given the max saccade latency at 350 ms and the frame width at 50 px
-t_period = 1 / v  # s
-l: int = 5
+# Camera resolution, coherent portion parameters
+width = 60
+height = 60
+v = 100  # px/s  50 - 142 given the max saccade latency at 350 ms and the frame width at 50 px
+t_period = np.round(1 / v, 5)  # s
+l: int = 6
 sp_freq: int = round(width / l)
 
 # dark bar on white background
@@ -21,6 +22,17 @@ y_array = np.arange(height)
 events = {"x": [], "y": [], "ts": [], "pol": [], "idx": []}
 # 100 events happening within each time period
 # v = 10 and l = 5 so t_bar_window = 0.5 s
+
+# Incoherent portion parameters
+width_inc = 20
+height_inc = 20
+v_inc = 142  # px/s
+# l_inc = 2
+t_period_inc = np.round(1 / v_inc, 5)
+sp_freq_inc = round(width_inc / l)
+ind = 0
+x_inc_coordinates = np.arange(round(width/2 - width_inc/2), round(width/2 + width_inc/2))
+y_inc_coordinates = np.arange(round(height/2 - height_inc/2), round(height/2 + height_inc/2))
 
 for x in np.arange(width):
     coord: list = []
@@ -36,7 +48,12 @@ for x in np.arange(width):
             if 0 <= ((x - 2 * i * l) - l) < width:
                 coord.append(((x - 2 * i * l) - l, y))
 
-    random.shuffle(coord)
+    for xy in coord[:]:
+        if xy[0] in x_inc_coordinates and xy[1] in y_inc_coordinates:
+            coord.remove(xy)
+
+    # random.shuffle(coord)
+
     time_window = np.round(np.linspace(0, t_period, len(coord), endpoint=False), 5)
     for i, (x_pos, y_pos) in enumerate(coord):
         # events is a list of tuples: (x position, y position, time in seconds, on/off polarity)
@@ -53,18 +70,13 @@ for x in np.arange(width):
         events['idx'].append(x_pos * height + y_pos)
 
 # Creation of the incoherent events
-width_inc = 20
-height_inc = 20
-v_inc = 100  # px/s
-t_period_inc = 1 / v_inc
-sp_freq = round(width_inc / l)
-ind = 0
 
-for x_inc in np.arange(round(width/2 - width_inc/2), round(width/2 + width_inc/2)):
+
+for x_inc in np.resize(x_inc_coordinates, width):
     coord_inc: list = []
-    t_inc = ind / v_inc  # starting time-point at each shift but probably useless
-    for i in np.arange(sp_freq):
-        for y_inc in np.arange(round(height/2 - height_inc/2), round(height/2 + height_inc/2)):
+    t_inc = np.round(ind / v_inc, 5)  # starting time-point at each shift but probably useless
+    for i in np.arange(sp_freq_inc):
+        for y_inc in y_inc_coordinates:
             if width/2 - width_inc/2 < (x_inc + 2 * i * l) < width/2 + width_inc/2:
                 coord_inc.append((x_inc + 2 * i * l, y_inc))
             if width/2 - width_inc/2 < ((x_inc + 2 * i * l) - l) < width/2 + width_inc/2:
@@ -86,28 +98,29 @@ for x_inc in np.arange(round(width/2 - width_inc/2), round(width/2 + width_inc/2
         # ts
         events['ts'].append(t_inc + time_window_inc[i])
         # pol
-        events['pol'].append(pol[1])
+        events['pol'].append(15)
         # idx
         events['idx'].append(x_pos * height + y_pos)
-    ind += sp_freq
+    ind += 1
 
+events = pd.DataFrame(events).sort_values(by='ts').to_dict('list')
 np.sort(events['ts'])
 np.save("events.npy", events)
 
 # # Visualization
-# frame = np.zeros((height, width))
-# t_period_state = t_period_inc
-# plt.ion()
-# fig = plt.figure()
-# ax = fig.add_subplot(111)
+frame = np.zeros((height, width))
+t_period_state = t_period
+plt.ion()
+fig = plt.figure()
+ax = fig.add_subplot(111)
 
-# for idx in np.arange(len(events['x'])):
-#     if events['ts'][idx] < t_period_state:
-#         frame[(events['y'][idx], events['x'][idx])] = 1
-#     else:
-#         ax.matshow(frame)  # or ax.imshow(frame)
-#         plt.draw()
-#         plt.pause(0.2)
-#         t_period_state += t_period_inc
-#         frame = np.zeros((height, width))
-#         frame[(events['y'][idx], events['x'][idx])] = 1
+for idx in np.arange(len(events['x'])):
+    if events['ts'][idx] < t_period_state:
+        frame[(events['y'][idx], events['x'][idx])] = 1
+    else:
+        ax.matshow(frame)  # or ax.imshow(frame)
+        plt.draw()
+        plt.pause(0.2)
+        t_period_state += t_period
+        frame = np.zeros((height, width))
+        frame[(events['y'][idx], events['x'][idx])] = 1
