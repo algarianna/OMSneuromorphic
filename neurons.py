@@ -5,7 +5,8 @@ from brian2tools import *
 import itertools
 import random
 
-matplotlib.use('TkAgg')
+
+# matplotlib.use('TkAgg')
 
 
 # # Visualizing connectivity
@@ -60,8 +61,7 @@ def visualisation(height, width, events, t_period):
 def view_spikes(width, spike_times):
     # Set the dimensions of the frame
     N_neurons = len(spike_times)  # N_neurons = number of RFs in the visual field. Each RF is composed of n pixels
-    RF_size = round(width/sqrt(N_neurons))  # row length / number of RF in one row
-
+    RF_size = round(width / sqrt(N_neurons))  # row length / number of RF in one row
 
     # Create a grid of zeros
     RF = np.zeros((width, width))
@@ -80,10 +80,12 @@ def view_spikes(width, spike_times):
     # circles_size = [radius * 2 * neurons[0] + RF_size // 4 * (neurons[0] - 1),
     #                 radius * 2 * neurons[1] + pitch * (neurons[1] - 1)]
 
-    centers_x = np.linspace(width/neurons[0]/2, width - radius - (width/neurons[0]/2), neurons[0], endpoint = 'true')
-    centers_y = np.linspace(width/neurons[0]/2, width - radius - (width/neurons[0]/2), neurons[1], endpoint = 'true')
+    centers_x = np.linspace(width / neurons[0] / 2, width - radius - (width / neurons[0] / 2), neurons[0],
+                            endpoint='true')
+    centers_y = np.linspace(width / neurons[0] / 2, width - radius - (width / neurons[0] / 2), neurons[1],
+                            endpoint='true')
 
-    centers = [(x,y) for x in centers_x for y in centers_y]
+    centers = [(x, y) for x in centers_x for y in centers_y]
 
     # np.array((centers_x, centers_y)).T
 
@@ -133,6 +135,7 @@ def plot_mean_firing_rate(spike_train, bin_size):
     plt.title('Mean Firing Rate of Neuron')
     plt.show()
 
+
 def mindiff(arr, n):
     # Sort array in non-decreasing order
     arr = sorted(arr)
@@ -146,26 +149,27 @@ def mindiff(arr, n):
     # Return min diff
     return diff
 
+
 if __name__ == "__main__":
-    width = 50
-    height = 50
+    width = 60
+    height = 60
     N = width * height
     coordinates = [(x, y) for x in range(width) for y in range(height)]
     time = 1  # second    last event time
     # t_period = round(time / len(coordinates), 4)   # second
     # t_period = 1/8 * second
     # events = create_events(coordinates, height, time)
-    events = np.load("events.npy", allow_pickle = 'TRUE').item()
+    events = np.load("events.npy", allow_pickle='TRUE').item()
     # visualisation(height, width, events, t_period)
 
-    DVS = SpikeGeneratorGroup(N, events['idx'], events['ts'] * second, dt=10*usecond)
+    DVS = SpikeGeneratorGroup(N, events['idx'], events['ts'] * second, dt=10 * usecond)
     eqs = '''
     dv/dt = (I-v)/tau : 1  
     I : 1
     tau : second
     '''
-    RF_per_row = 50
-    RF_size: int = width//RF_per_row  # RFs pixel size is RF_size x RF_size
+    RF_per_row = 6
+    RF_size: int = width // RF_per_row  # RFs pixel size is RF_size x RF_size
     RF_N = N // (RF_size ** 2)  # number of RFs
     RF_perc = 0.75
     RF_active = round(RF_size ** 2 * RF_perc)
@@ -178,20 +182,20 @@ if __name__ == "__main__":
     indexes = []  # pre synaptic neuron indexes
     for a in np.arange(0, height * (height - RF_size) + 1, RF_size * height):  # Calculating the starting index for
         # each sample column
-        for b in np.arange(a, a + height - RF_size + 1, RF_size): # Calculating the starting index for
-        # each sample row
+        for b in np.arange(a, a + height - RF_size + 1, RF_size):  # Calculating the starting index for
+            # each sample row
             for c in np.arange(RF_size):  # Going over RF width
                 for cc in np.arange(RF_size):  # Going over RF height
                     indexes.append(b + c * height + cc)  # All indexes in each sample
     indexes = np.array(indexes)
-    indexes = np.resize(indexes, (RF_N, RF_size**2))
+    indexes = np.resize(indexes, (RF_N, RF_size ** 2))
 
     S_DVS_RF = Synapses(DVS, RF, on_pre='v_post +=1')
 
     for rf in np.arange(RF_N):
         S_DVS_RF.connect(i=indexes[rf], j=rf)
 
-    visualise_syn_connectivity(S_DVS_RF, 'DVS', 'RF')
+    # visualise_syn_connectivity(S_DVS_RF, 'DVS', 'RF')
 
     # Amacrine cell dedicated to suppress slow coherent stimuli
     A_s_thr = 4
@@ -226,7 +230,7 @@ if __name__ == "__main__":
 
     RF_to_OMS = Synapses(RF, OMS, on_pre='v_post +=1')
     RF_to_OMS.connect('i==j')
-    RF_to_OMS.delay =150 * ms
+    RF_to_OMS.delay = 150 * ms
 
     # Synapse between Amacrine - slow and OMS cells
     A_s_to_OMS = Synapses(A_s, OMS, on_pre='v_post +=-1.5')
@@ -244,7 +248,8 @@ if __name__ == "__main__":
 
     RF_spike_mon = SpikeMonitor(RF)
     RF_state_mon = StateMonitor(RF, 'v', record=True)  # Recording state variable v during a run
-    RF_fr_mon = PopulationRateMonitor(RF)
+    RF_rate = PopulationRateMonitor(RF)
+    # RF_rate_smoothed = PopulationRateMonitor.smooth_rate(RF_rate,window="gaussian", width=0.02*second)
 
     A_s_spike_mon = SpikeMonitor(A_s)  # Recording spikes
     A_s_state_mon = StateMonitor(A_s, 'v', record=True)  # Recording state variable v during a run
@@ -262,8 +267,14 @@ if __name__ == "__main__":
     OMS_state_mon = StateMonitor(OMS, 'v', record=True)  # Recording state variable v during a run
     OMS_fr_mon = PopulationRateMonitor(OMS)
 
-    sim_time = 100 * ms
+    sim_time = 400 * ms
     run(sim_time)
+    figure()
+    brian_plot(DVS_spike_mon)
+    brian_plot(RF_spike_mon)
+    brian_plot(A_s_spike_mon)
+    brian_plot(OMS_spike_mon)
+
     # for i in np.arange(RF_N):
     #     figure()
     #     plot(RF_state_mon.t / ms, RF_state_mon.v[i], label='RF ' + str(i + 1))
@@ -279,24 +290,24 @@ if __name__ == "__main__":
     DVS_spikes = DVS_spike_mon.spike_trains()
 
     # DVS spikes visualization
-    dvs, ax = plt.subplots(width, height)
-    dvs.suptitle("DVS Spikes")
-    for idx in np.arange(width):
-        for idy in np.arange(height):
-            ax[idx, idy].vlines(DVS_spikes[idx + idy * height], 0, 1)
-            ax[idx, idy].set_xticks([])
-            ax[idx, idy].set_yticks([])
-            ax[idx, idy].set_xlim(0, sim_time / second)
-            # ax[idx, idy].axis('off')
-    dvs.show()
-
+    # dvs, ax = plt.subplots(width, height)
+    # dvs.suptitle("DVS Spikes")
+    # for idx in np.arange(width):
+    #     for idy in np.arange(height):
+    #         ax[idx, idy].vlines(DVS_spikes[idx + idy * height], 0, 1)
+    #         ax[idx, idy].set_xticks([])
+    #         ax[idx, idy].set_yticks([])
+    #         ax[idx, idy].set_xlim(0, sim_time / second)
+    #         # ax[idx, idy].axis('off')
+    # dvs.show()
 
     # figure()
     # plt.plot(DVS_spike_mon.i, DVS_spike_mon.t / ms, '.')
     # ylim(0, 2500)
     # xlim(0, sim_time)
 
-    RF_spike_times = RF_spike_mon.spike_trains()
+    # RF_spike_times = RF_spike_mon.spike_trains()
+    # plot(RF_rate_smoothed.t / ms, RF_rate_smoothed.rate / Hz)
 
     # RF spikes visualization
     rf, ax = plt.subplots(RF_per_row, RF_per_row)
@@ -360,36 +371,36 @@ if __name__ == "__main__":
     #     OMS_frame = np.zeros((width, width))
 
     amacrines, ((ax1, ax2, ax3, ax5), (ax6, ax7, ax8, ax10)) = plt.subplots(2, 4, figsize=(25, 10))
-    amacrines.suptitle('Grating, v = 30 px/s')
+    # amacrines.suptitle('Grating, v = 30 px/s')
     # RF 1 cell voltage plot
-    RF_cell = 16
-    ax1.plot(RF_state_mon.t / ms, RF_state_mon.v[RF_cell], 'r')
+    # RF_cell = 16
+    # ax1.plot(RF_state_mon.t / ms, RF_state_mon.v[RF_cell], 'r')
     # ax1.set_xlabel('Time [ms]')
-    ax1.set_ylabel('Voltage ')
-    ax1.set_ylim(top=10)
-    ax1.set_title('Input cell #' + str(RF_cell) + ' voltage')
-    ax1.axhline(RF_thr, ls='--', c='C2', lw=2)
-
-    # RF 1 cell FR plot
-    ax6.plot(RF_fr_mon.t / ms, RF_fr_mon.rate / Hz)
-    ax6.set_xlabel('Time [ms]')
-    ax6.set_ylabel('Firing rate [Hz] ')
-    ax6.set_title('Input cell #' + str(RF_cell) + ' firing rate')
+    # ax1.set_ylabel('Voltage ')
+    # ax1.set_ylim(top=10)
+    # ax1.set_title('Input cell #' + str(RF_cell) + ' voltage')
+    # ax1.axhline(RF_thr, ls='--', c='C2', lw=2)
+    #
+    # # RF 1 cell FR plot
+    # ax6.plot(RF_fr_mon.t / ms, RF_fr_mon.rate / Hz)
+    # ax6.set_xlabel('Time [ms]')
+    # ax6.set_ylabel('Firing rate [Hz] ')
+    # ax6.set_title('Input cell #' + str(RF_cell) + ' firing rate')
 
     # Amacrine (slow) voltage plot
-    ax2.plot(A_s_state_mon.t/ms, A_s_state_mon.v[0], 'r')
-    # ax2.set_xlabel('Time [ms]')
-    # ax2.set_ylabel('Voltage ')
-    ax2.set_ylim(top=10)
-    ax2.set_title('Amacrine (slow) cell voltage')
-    ax2.axhline(A_s_thr, ls='--', c='C2', lw=2)
-
-    ax3.plot(A_m_state_mon.t / ms, A_m_state_mon.v[0], 'r')
-    # ax3.set_xlabel('Time [ms]')
-    # ax3.set_ylabel('Voltage ')
-    ax3.set_ylim(top=10)
-    ax3.set_title('Amacrine (medium) cell voltage')
-    ax3.axhline(A_m_thr, ls='--', c='C2', lw=2)
+    # ax2.plot(A_s_state_mon.t/ms, A_s_state_mon.v[0], 'r')
+    # # ax2.set_xlabel('Time [ms]')
+    # # ax2.set_ylabel('Voltage ')
+    # ax2.set_ylim(top=10)
+    # ax2.set_title('Amacrine (slow) cell voltage')
+    # ax2.axhline(A_s_thr, ls='--', c='C2', lw=2)
+    #
+    # ax3.plot(A_m_state_mon.t / ms, A_m_state_mon.v[0], 'r')
+    # # ax3.set_xlabel('Time [ms]')
+    # # ax3.set_ylabel('Voltage ')
+    # ax3.set_ylim(top=10)
+    # ax3.set_title('Amacrine (medium) cell voltage')
+    # ax3.axhline(A_m_thr, ls='--', c='C2', lw=2)
 
     # ax4.plot(A_f_state_mon.t / ms, A_f_state_mon.v[0], 'r')
     # # ax4.set_xlabel('Time [ms]')
@@ -398,35 +409,33 @@ if __name__ == "__main__":
     # ax4.set_title('Amacrine (fast) cell voltage')
     # ax4.axhline(A_f_thr, ls='--', c='C2', lw=2)
 
-    ax7.plot(A_s_fr_mon.t / ms, A_s_fr_mon.rate / Hz)
-    ax7.set_xlabel('Time [ms]')
-    # ax7.set_ylabel('Firing rate [Hz] ')
-    ax7.set_title('Amacrine (slow) firing rate')
-
-    ax8.plot(A_m_fr_mon.t / ms, A_m_fr_mon.rate / Hz)
-    ax8.set_xlabel('Time [ms]')
-    # ax8.set_ylabel('Firing rate [Hz] ')
-    ax8.set_title('Amacrine (medium) firing rate')
+    # ax7.plot(A_s_fr_mon.t / ms, A_s_fr_mon.rate / Hz)
+    # ax7.set_xlabel('Time [ms]')
+    # # ax7.set_ylabel('Firing rate [Hz] ')
+    # ax7.set_title('Amacrine (slow) firing rate')
+    #
+    # ax8.plot(A_m_fr_mon.t / ms, A_m_fr_mon.rate / Hz)
+    # ax8.set_xlabel('Time [ms]')
+    # # ax8.set_ylabel('Firing rate [Hz] ')
+    # ax8.set_title('Amacrine (medium) firing rate')
 
     # ax9.plot(A_f_fr_mon.t / ms, A_f_fr_mon.rate / Hz)
     # ax9.set_xlabel('Time [ms]')
     # # ax9.set_ylabel('Firing rate [Hz] ')
     # ax9.set_title('Amacrine (fast) firing rate')
 
-# for i in arange(RF_N):
-    cell = 0
-    ax5.plot(OMS_state_mon.t / ms, OMS_state_mon.v[cell], 'r')
-    # ax5.set_xlabel('Time [ms]')
-    # ax5.set_ylabel('Voltage ')
-    ax5.set_ylim(-6, +6)
-    ax5.set_title('Output cell #'+str(cell)+'  voltage')
-    ax5.axhline(OMS_thr, ls='--', c='C2', lw=2)
-
-    ax10.plot(OMS_fr_mon.t / ms, OMS_fr_mon.rate / Hz)
-    ax10.set_xlabel('Time [ms]')
-    # ax10.set_ylabel('Firing rate [Hz] ')
-    ax10.set_title('OMS cell #' + str(cell) + ' firing rate')
+    # for i in arange(RF_N):
+    #     cell = 0
+    #     ax5.plot(OMS_state_mon.t / ms, OMS_state_mon.v[cell], 'r')
+    #     # ax5.set_xlabel('Time [ms]')
+    #     # ax5.set_ylabel('Voltage ')
+    #     ax5.set_ylim(-6, +6)
+    #     ax5.set_title('Output cell #'+str(cell)+'  voltage')
+    #     ax5.axhline(OMS_thr, ls='--', c='C2', lw=2)
+    #
+    #     ax10.plot(OMS_fr_mon.t / ms, OMS_fr_mon.rate / Hz)
+    #     ax10.set_xlabel('Time [ms]')
+    #     # ax10.set_ylabel('Firing rate [Hz] ')
+    #     ax10.set_title('OMS cell #' + str(cell) + ' firing rate')
 
     plt.show()
-
-
