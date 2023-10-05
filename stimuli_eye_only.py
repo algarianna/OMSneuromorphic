@@ -9,15 +9,10 @@ matplotlib.use('TkAgg')
 
 # camera resolution
 # n.b. 1 pixel = 9.2 um
-# width = 641  # pixel = 5900 um
-# height = 478  # pixel = 4400 um
-# t_period = 0.015  # s jittering period
-# l: int = 20  # pixel black + white bar width
-# bw_num: int = round(width / l)  # black + white bar number
 
 width = 640  # pixel = 5900 um
 height = 480  # pixel = 4400 um
-t_period = 0.15  # s jittering period
+t_period = 0.015  # s jittering period
 bars_frequency = 184  # um
 l: int = 20  # 184/9.2 pixel black + white bar width
 bw_num: int = round(width / l)  # black + white bar number
@@ -47,13 +42,14 @@ for x in x_positions:
         coord['x'].append(x)
         coord['y'].append(y)
 
-sim_time = 3  # s
+sim_time = 1  # s
 time = np.round(np.arange(0, sim_time, t_period), 8)
 # time_window = np.round(np.linspace(0, t_period, len(coord), endpoint=False), 8)
 #
 # time = time[:, np.newaxis] + time_window
 # time = time.flatten()
-g
+possible_jittering_shift = [-1, 1]
+
 for t in time:
     # Combine 'x' and 'y' lists into a single list of (x, y) pairs
     combined = list(zip(coord['x'], coord['y']))
@@ -92,7 +88,7 @@ for t in time:
 # events = [e for e in events for (e['x'] > 0 and e < width)]
 # list_1 = [item for item in list_1 if item[2] >= 5 or item[3] >= 0.3]
 
-np.save("events.npy", events)
+np.save("events_eye_only.npy", events)
 
 # # Visualization
 frame = np.zeros((height, width))
