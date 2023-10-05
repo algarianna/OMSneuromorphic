@@ -44,12 +44,14 @@ if __name__ == "__main__":
     diameter = 80  # 800 um
     width_inc = 80
     height_inc = 80
+    v = 49  # px/s = 450 um/s
+    v = 1  # px/0.015s
 
     # dark bar on white background
     pol = [0, 1]
     events = {"x": [], "y": [], "ts": [], "pol": [], "idx": []}
 
-    sim_time = 3  # s
+    sim_time = 1  # s
     time = np.round(np.arange(0, sim_time, t_period), 8)
 
     possible_jittering_shift = [-1, 1]
@@ -64,32 +66,32 @@ if __name__ == "__main__":
     surround = list(zip(coord['x'], coord['y']))
 
     # creation of surround events
-    # for t in time:
-    #     # Shuffle the combined list
-    #     random.shuffle(surround)
-    #     # Unzip the shuffled list back into 'x' and 'y'
-    #     jitter = rnd.choice(possible_jittering_shift)
-    #     coord['x'], coord['y'] = zip(*surround)
-    #     coord_x = np.array(coord['x'])
-    #     coord_x += jitter
-    #     coord_x[coord_x < 0] += width
-    #     coord_x[coord_x >= width] -= width
-    #     coord['x'] = list(coord_x)
-    #     surround = list(zip(coord['x'], coord['y']))
-    #     for x, y in surround:
-    #         # events is a list of tuples: (x position, y position, time in seconds, on/off polarity)
-    #         # creating events
-    #         # x
-    #         if not (x in x_inc_coordinates and y in y_inc_coordinates):
-    #             events['x'].append(x)
-    #             # y
-    #             events['y'].append(y)
-    #             # ts
-    #             events['ts'].append(t)
-    #             # pol
-    #             events['pol'].append(pol[1])
-    #             # idx
-    #             events['idx'].append(x * height + y)
+    for t in time:
+        # Shuffle the combined list
+        random.shuffle(surround)
+        # Unzip the shuffled list back into 'x' and 'y'
+        jitter = rnd.choice(possible_jittering_shift)
+        coord['x'], coord['y'] = zip(*surround)
+        coord_x = np.array(coord['x'])
+        coord_x += jitter
+        coord_x[coord_x < 0] += width
+        coord_x[coord_x >= width] -= width
+        coord['x'] = list(coord_x)
+        surround = list(zip(coord['x'], coord['y']))
+        for x, y in surround:
+            # events is a list of tuples: (x position, y position, time in seconds, on/off polarity)
+            # creating events
+            # x
+            if not (x in x_inc_coordinates and y in y_inc_coordinates):
+                events['x'].append(x)
+                # y
+                events['y'].append(y)
+                # ts
+                events['ts'].append(t)
+                # pol
+                events['pol'].append(pol[1])
+                # idx
+                events['idx'].append(x * height + y)
 
     # creation of object coordinates
     coordinates = {"x": [], "y": []}
@@ -118,9 +120,8 @@ if __name__ == "__main__":
         # Shuffle the combined list
         random.shuffle(combined)
         # Unzip the shuffled list back into 'x' and 'y'
-        jitter = rnd.choice(possible_jittering_shift)
         coord_x = np.array(coordinates['x'])
-        coord_x += jitter
+        coord_x += 1
         # for x in coord_x:
         #     if x >= np.round(width // 2 + width_inc // 2):
         #         x_roll = x + width_inc
@@ -170,7 +171,7 @@ if __name__ == "__main__":
 
     events = pd.DataFrame(events).sort_values(by='ts').to_dict('list')
     np.sort(events['ts'])
-    np.save("events_eye_object.npy", events)
+    np.save("events_eye_object_drift.npy", events)
 
     # Visualization
     frame = np.zeros((height, width))
