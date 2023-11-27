@@ -1,4 +1,4 @@
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import numpy as np
 from brian2 import *
 from brian2tools import *
@@ -6,7 +6,7 @@ import itertools
 import random
 
 
-matplotlib.use('TkAgg')
+# matplotlib.use('TkAgg')
 
 
 # # Visualizing connectivity
@@ -159,7 +159,8 @@ if __name__ == "__main__":
     # t_period = round(time / len(coordinates), 4)   # second
     # t_period = 1/8 * second
     # events = create_events(coordinates, height, time)
-    events = np.load("events_eye_object.npy", allow_pickle='TRUE').item()
+    events_file = "events_eye_object.npy"
+    events = np.load(events_file, allow_pickle='TRUE').item()
 
     event_tuples = list(zip(events["x"], events["y"], events["ts"], events["pol"], events["idx"]))
 
@@ -284,7 +285,7 @@ if __name__ == "__main__":
     OMS_state_mon = StateMonitor(OMS, 'v', record=True)  # Recording state variable v during a run
     OMS_fr_mon = PopulationRateMonitor(OMS)
 
-    sim_time = 1050 * ms
+    sim_time = 500 * ms
     run(sim_time)
     # figure()
     # brian_plot(DVS_spike_mon)
@@ -389,8 +390,8 @@ if __name__ == "__main__":
     #     RF_frame = np.zeros((width, width))
     #     OMS_frame = np.zeros((width, width))
 
-    # amacrines, ((rf_surr, rf_center), (amacrine, null), (oms_surr, oms_center)) = plt.subplots(3, 2, figsize=(25, 10))
-    # amacrines.suptitle('Grating, v = 30 px/s')
+    amacrines, ((rf_surr, rf_center), (amacrine, null), (oms_surr, oms_center)) = plt.subplots(3, 2, figsize=(25, 10))
+    amacrines.suptitle('Stimuli = ' + events_file)
     # DVS surround cell voltage plot
     # cell = 0
     # dvs_surr.plot(DVS_state_mon.t / ms, DVS_state_mon.v[cell], 'r')
@@ -410,46 +411,50 @@ if __name__ == "__main__":
     # dvs_center.axhline(RF_thr, ls='--', c='C2', lw=2)
 
     # RF surround cell voltage plot
-    # cell = 0
-    # rf_surr.plot(RF_state_mon.t / ms, RF_state_mon.v[cell], 'r')
-    # rf_surr.set_xlabel('Time [ms]')
-    # rf_surr.set_ylabel('Voltage ')
-    # rf_surr.set_ylim(top=10)
-    # rf_surr.set_title('RF cell #' + str(cell) + ' voltage')
-    # rf_surr.axhline(RF_thr, ls='--', c='C2', lw=2)
-    #
-    # # RF center cell FR plot
-    # cell = (RF_per_row//2) * RF_per_column + RF_per_column//2
-    # rf_center.plot(RF_state_mon.t / ms, RF_state_mon.v[cell], 'r')
-    # rf_center.set_xlabel('Time [ms]')
-    # rf_center.set_ylabel('Voltage ')
-    # rf_center.set_title('RF cell #' + str(cell) + ' firing rate')
-    #
-    # # Amacrine voltage plot
-    # amacrine.plot(A_state_mon.t/ms, A_state_mon.v[0], 'r')
-    # # ax2.set_xlabel('Time [ms]')
-    # # ax2.set_ylabel('Voltage ')
-    # amacrine.set_ylim(top=10)
-    # amacrine.set_title('Amacrine cell voltage')
-    # amacrine.axhline(A_thr, ls='--', c='C2', lw=2)
-    #
-    # # OMS surround cell voltage plot
-    # cell = 0
-    # oms_surr.plot(OMS_state_mon.t / ms, OMS_state_mon.v[cell], 'r')
-    # # ax4.set_xlabel('Time [ms]')
-    # # ax4.set_ylabel('Voltage ')
-    # oms_surr.set_ylim(top=10)
-    # oms_surr.set_title('OMS cell #' + str(cell) + ' voltage')
-    # oms_surr.axhline(OMS_thr, ls='--', c='C2', lw=2)
-    #
-    # # OMS center cell voltage plot
-    # cell = (RF_per_row//2) * RF_per_column + RF_per_column//2
-    # oms_center.plot(OMS_state_mon.t / ms, OMS_state_mon.v[cell], 'r')
-    # # ax4.set_xlabel('Time [ms]')
-    # # ax4.set_ylabel('Voltage ')
-    # oms_center.set_ylim(top=10)
-    # oms_center.set_title('OMS cell #' + str(cell) + ' voltage')
-    # oms_center.axhline(OMS_thr, ls='--', c='C2', lw=2)
+    cell = 0
+    rf_surr.plot(RF_state_mon.t / ms, RF_state_mon.v[cell], 'r')
+    rf_surr.set_xlabel('Time [ms]')
+    rf_surr.set_ylabel('Voltage ')
+    rf_surr.set_ylim(top=10)
+    rf_surr.set_title('BP cell #' + str(cell) + ' voltage')
+    rf_surr.axhline(RF_thr, ls='--', c='C2', lw=2)
+    rf_surr.set_ylim([0, 200])
+    
+    # RF center cell FR plot
+    cell = (RF_per_row//2) * RF_per_column + RF_per_column//2
+    rf_center.plot(RF_state_mon.t / ms, RF_state_mon.v[cell], 'r')
+    rf_center.set_xlabel('Time [ms]')
+    rf_center.set_ylabel('Voltage ')
+    rf_center.set_title('BP cell #' + str(cell) + ' firing rate')
+    rf_center.set_ylim([0, 200])
+    
+    # Amacrine voltage plot
+    amacrine.plot(A_state_mon.t/ms, A_state_mon.v[0], 'r')
+    # ax2.set_xlabel('Time [ms]')
+    # ax2.set_ylabel('Voltage ')
+    amacrine.set_ylim(top=10)
+    amacrine.set_title('Amacrine cell voltage')
+    amacrine.axhline(A_thr, ls='--', c='C2', lw=2)
+    amacrine.set_ylim([0, 30])
+
+    
+    # OMS surround cell voltage plot
+    cell = 0
+    oms_surr.plot(OMS_state_mon.t / ms, OMS_state_mon.v[cell], 'r')
+    # ax4.set_xlabel('Time [ms]')
+    # ax4.set_ylabel('Voltage ')
+    oms_surr.set_ylim(top=10)
+    oms_surr.set_title('OMS cell #' + str(cell) + ' voltage')
+    oms_surr.axhline(OMS_thr, ls='--', c='C2', lw=2)
+    
+    # OMS center cell voltage plot
+    cell = (RF_per_row//2) * RF_per_column + RF_per_column//2
+    oms_center.plot(OMS_state_mon.t / ms, OMS_state_mon.v[cell], 'r')
+    # ax4.set_xlabel('Time [ms]')
+    # ax4.set_ylabel('Voltage ')
+    oms_center.set_ylim(top=10)
+    oms_center.set_title('OMS cell #' + str(cell) + ' voltage')
+    oms_center.axhline(OMS_thr, ls='--', c='C2', lw=2)
 
     # ax9.plot(A_f_fr_mon.t / ms, A_f_fr_mon.rate / Hz)
     # ax9.set_xlabel('Time [ms]')
@@ -470,53 +475,53 @@ if __name__ == "__main__":
     #     # ax10.set_ylabel('Firing rate [Hz] ')
     #     ax10.set_title('OMS cell #' + str(cell) + ' firing rate')
 
-    # plt.show()
+    plt.show()
 
     # Population spikes visualization
     # rasterplot, (ax1, ax2, ax3, ax4, ax5, ax6, ax7) = plt.subplots(7, 1, figsize=(10, 25))
-    #
+    
     # ax1.vlines(DVS_spike_times[0], 0, 1)
     # ax1.set_xticks([])
     # ax1.set_yticks([])
     # ax1.set_xlim(0, sim_time / second)
     # ax1.set_ylabel('DVS background')
-    #
+    
     # ax2.vlines(DVS_spike_times[1260], 0, 1)
     # ax2.set_xticks([])
     # ax2.set_yticks([])
     # ax2.set_xlim(0, sim_time / second)
     # ax2.set_ylabel('DVS object')
-    #
+    
     # ax3.vlines(RF_spike_times[0], 0, 1)
     # ax3.set_xticks([])
     # ax3.set_yticks([])
     # ax3.set_xlim(0, sim_time / second)
     # ax3.set_ylabel('RF background')
-    #
+    
     # ax4.vlines(RF_spike_times[83], 0, 1)
     # ax4.set_xticks([])
     # ax4.set_yticks([])
     # ax4.set_xlim(0, sim_time / second)
     # ax4.set_ylabel('RF object')
-    #
+    
     # ax5.vlines(A_spike_times[0], 0, 1)
     # ax5.set_xticks([])
     # ax5.set_yticks([])
     # ax5.set_xlim(0, sim_time / second)
     # ax5.set_ylabel('Amacrine')
-    #
+    
     # ax6.vlines(OMS_spike_times[0], 0, 1)
     # ax6.set_xlim(0, sim_time / second)
     # ax6.set_yticks([])
     # ax6.set_ylabel('OMS')
     # ax6.set_xlabel('Time (s)')
-    #
+    
     # ax7.vlines(OMS_spike_times[83], 0, 1)
     # ax7.set_xlim(0, sim_time / second)
     # ax7.set_yticks([])
     # ax7.set_ylabel('OMS')
     # ax7.set_xlabel('Time (s)')
-    #
+    
     # plt.show()
 
     first_rf_plot, ax = plt.subplots(RF_N, 1, figsize=(10, 25))
