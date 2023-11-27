@@ -49,7 +49,7 @@ if __name__ == "__main__":
     pol = [0, 1]
     events = {"x": [], "y": [], "ts": [], "pol": [], "idx": []}
 
-    sim_time = 1  # s
+    sim_time = 100  # s
     time = np.round(np.arange(0, sim_time, t_period), 8)
 
     possible_jittering_shift = [-1, 1]
@@ -112,6 +112,7 @@ if __name__ == "__main__":
             coordinates['y'].append(y)
 
     # creation of center events
+    time = time + 0.005
     for t in time:
         # Combine 'x' and 'y' lists into a single list of (x, y) pairs
         combined = list(zip(coordinates['x'], coordinates['y']))
