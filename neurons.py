@@ -2,12 +2,9 @@
 import numpy as np
 from brian2 import *
 from brian2tools import *
-import itertools
-import random
-
+from bimvee.importIitYarp import importIitYarp
 
 # matplotlib.use('TkAgg')
-
 
 # # Visualizing connectivity
 def visualise_syn_connectivity(synapse, pre, post):
@@ -159,10 +156,22 @@ if __name__ == "__main__":
     # t_period = round(time / len(coordinates), 4)   # second
     # t_period = 1/8 * second
     # events = create_events(coordinates, height, time)
-    events_file = "events_eye_object.npy"
-    events = np.load(events_file, allow_pickle='TRUE').item()
 
+
+    
+    events_file = "events_eye_object_drift.npy"
+    events = np.load(events_file, allow_pickle='TRUE').item()
     event_tuples = list(zip(events["x"], events["y"], events["ts"], events["pol"], events["idx"]))
+
+
+
+    # events = importIitYarp(filePathOrName="/home/agardella/Desktop/OMSneuromorphic/data/", tsBits=30)
+    # e_x = events['data']['left']['dvs']['x']
+    # e_y = events['data']['left']['dvs']['y']
+    # e_ts = np.multiply(events['data']['left']['dvs']['ts'], 10**3)
+    # e_pol = events['data']['left']['dvs']['pol']
+
+    # event_tuples = list(zip(e_x, e_y, e_ts, e_pol))
 
     # Initialize a dictionary to store the indices of each unique combination
     unique_combinations_indices = {}
@@ -199,7 +208,7 @@ if __name__ == "__main__":
     RF_thr = 0.2
     # Adding a threshold and the reset to 0 after a spike. (to add RP : refractory  = 3*ms)
     RF = NeuronGroup(RF_N, eqs, threshold='v>RF_thr', reset='v=0', method='exact')
-    RF.tau = 100 * ms
+    RF.tau = 10 * ms
 
     # Down sampling from DVS to RF
     indexes = []  # pre synaptic neuron indexes
@@ -211,62 +220,44 @@ if __name__ == "__main__":
                 for cc in np.arange(RF_height):  # Going over RF height
                     indexes.append(b + c * height + cc)  # All indexes in each sample
     indexes = np.array(indexes)
-    indexes = np.resize(indexes, (RF_N, RF_width * RF_height))
-
-    # ERO QUI A DOWNSAMPLARE DA RF A OMS MI RACCOMANDO CHECK VARIABILI E FARE FUNZ
-
-    # OMS_per_row = 40  # RF size is 16x16, similar to having diameter 150 um
-    # OMS_per_column = 30
-    # OMS_width: int = width // OMS_per_row  # RFs pixel size is RF_width x RF_height
-    # OMS_height: int = height // OMS_per_column
-    # OMS_size = RF_width * RF_height
-    # OMS_N = N // (RF_size)  # number of RFs
-    # RF_perc = 0.75
-    # RF_active = round(RF_size * RF_perc)
-    # RF_thr = 0.2
-    # # Adding a threshold and the reset to 0 after a spike. (to add RP : refractory  = 3*ms)
-    # OMS = NeuronGroup(OMS_N, eqs, threshold='v>RF_thr', reset='v=0', method='exact')
-    # RF.tau = 100 * ms
-
+    indexes = np.resize(indexes, (RF_N, RF_width * RF_height))    
+   
     # Down sampling from RF to OMS
-    indexes = []  # pre synaptic neuron indexes
-    for a in np.arange(0, height * (height - RF_height) + 1, RF_height * height):  # Calculating the starting index for
-        # each sample column
-        for b in np.arange(a, a + height - RF_height + 1, RF_height):  # Calculating the starting index for
-            # each sample row
-            for c in np.arange(RF_width):  # Going over RF width
-                for cc in np.arange(RF_height):  # Going over RF height
-                    indexes.append(b + c * height + cc)  # All indexes in each sample
-    indexes = np.array(indexes)
-    indexes = np.resize(indexes, (RF_N, RF_width * RF_height))
+    # ERO QUI A DOWNSAMPLARE DA RF A OMS MI RACCOMANDO CHECK VARIABILI E FARE FUNZ
+    OMS_per_row = width // 2  # OMS size is 2x2, similar to having diameter 450 um
+    OMS_per_column = height // 2
+    OMS_width: int = 2  # OMS pixel size is OMS_width x _height
+    OMS_height: int = 2
+    OMS_size = OMS_width * OMS_height
+    OMS_N = N // (OMS_size)  # number of OMS
 
-    S_DVS_RF = Synapses(DVS, RF, on_pre='v_post +=1')
-
-    for rf in np.arange(RF_N):
-        S_DVS_RF.connect(i=indexes[rf], j=rf)
-
-    # visualise_syn_connectivity(S_DVS_RF, 'DVS', 'RF')
-
-    # Amacrine cell to suppress coherent stimuli
+    # Adding a threshold and the reset to 0 after a spike. (to add RP : refractory  = 3*ms)
     A_thr = 4
     A = NeuronGroup(1, eqs, threshold='v>A_thr', reset='v=0', method='exact')  # refractory=3*ms
     A.tau = 10 * ms
 
-    # Synapse between RF cells and Amacrine - slow
+    OMS_thr = 2
+    OMS = NeuronGroup(OMS_N, eqs, threshold='v>OMS_thr', reset='v=0', method='exact') # refractory=3*ms
+    RF.tau = 100 * ms
+
+    # Downsampling from DVS to BP
+    S_DVS_RF = Synapses(DVS, RF, on_pre='v_post +=1')
+    for rf in np.arange(RF_N):
+        S_DVS_RF.connect(i=indexes[rf], j=rf)
+    # visualise_syn_connectivity(S_DVS_RF, 'DVS', 'RF')
+
+    # Synapse between RF cells and Amacrine - fast
     RF_to_A = Synapses(RF, A, on_pre='v_post +=0.02')
     RF_to_A.connect()
 
-    OMS_thr = 2
-    OMS = NeuronGroup(RF_N, eqs, threshold='v>OMS_thr', reset='v=0', method='exact')  # refractory=3*ms
-    OMS.tau = 100 * ms
+    # Synapse between Amacrine and OMS cells - fast
+    A_to_OMS = Synapses(A, OMS, on_pre='v_post /= 2')
+    A_to_OMS.connect()
 
+    # Synapse between RF cells and OMS - slow
     RF_to_OMS = Synapses(RF, OMS, on_pre='v_post +=1')
     RF_to_OMS.connect('i==j')
-    RF_to_OMS.delay = 50 * ms
-
-    # Synapse between Amacrine - slow and OMS cells
-    A_to_OMS = Synapses(A, OMS, on_pre='v_post +=-1.5')
-    A_to_OMS.connect()
+    RF_to_OMS.delay = 25 * ms
 
     DVS_spike_mon = SpikeMonitor(DVS)
     # DVS_state_mon = StateMonitor(DVS, 'v', record=True)  # Recording state variable v during a run
@@ -390,7 +381,7 @@ if __name__ == "__main__":
     #     RF_frame = np.zeros((width, width))
     #     OMS_frame = np.zeros((width, width))
 
-    amacrines, ((rf_surr, rf_center), (amacrine, null), (oms_surr, oms_center)) = plt.subplots(3, 2, figsize=(25, 10))
+    amacrines, ((rf_surr, rf_center), (amacrine, amacrine_copy), (oms_surr, oms_center)) = plt.subplots(3, 2, figsize=(25, 10))
     amacrines.suptitle('Stimuli = ' + events_file)
     # DVS surround cell voltage plot
     # cell = 0
@@ -413,47 +404,56 @@ if __name__ == "__main__":
     # RF surround cell voltage plot
     cell = 0
     rf_surr.plot(RF_state_mon.t / ms, RF_state_mon.v[cell], 'r')
-    rf_surr.set_xlabel('Time [ms]')
+    # rf_surr.set_xlabel('Time [ms]')
     rf_surr.set_ylabel('Voltage ')
     rf_surr.set_ylim(top=10)
-    rf_surr.set_title('BP cell #' + str(cell) + ' voltage')
+    rf_surr.set_title('BP cell #' + str(cell) + ' in surround')
     rf_surr.axhline(RF_thr, ls='--', c='C2', lw=2)
     rf_surr.set_ylim([0, 200])
     
     # RF center cell FR plot
     cell = (RF_per_row//2) * RF_per_column + RF_per_column//2
     rf_center.plot(RF_state_mon.t / ms, RF_state_mon.v[cell], 'r')
-    rf_center.set_xlabel('Time [ms]')
+    # rf_center.set_xlabel('Time [ms]')
     rf_center.set_ylabel('Voltage ')
-    rf_center.set_title('BP cell #' + str(cell) + ' firing rate')
+    rf_center.set_title('BP cell #' + str(cell) + ' in center')
     rf_center.set_ylim([0, 200])
     
     # Amacrine voltage plot
     amacrine.plot(A_state_mon.t/ms, A_state_mon.v[0], 'r')
     # ax2.set_xlabel('Time [ms]')
-    # ax2.set_ylabel('Voltage ')
+    amacrine.set_ylabel('Voltage ')
     amacrine.set_ylim(top=10)
     amacrine.set_title('Amacrine cell voltage')
     amacrine.axhline(A_thr, ls='--', c='C2', lw=2)
     amacrine.set_ylim([0, 30])
 
+    # Amacrine voltage plot
+    amacrine_copy.plot(A_state_mon.t/ms, A_state_mon.v[0], 'r')
+    # ax2.set_xlabel('Time [ms]')
+    amacrine_copy.set_ylabel('Voltage ')
+    amacrine_copy.set_ylim(top=10)
+    amacrine_copy.set_title('Amacrine cell voltage')
+    amacrine_copy.axhline(A_thr, ls='--', c='C2', lw=2)
+    amacrine_copy.set_ylim([0, 30])
+
     
     # OMS surround cell voltage plot
     cell = 0
     oms_surr.plot(OMS_state_mon.t / ms, OMS_state_mon.v[cell], 'r')
-    # ax4.set_xlabel('Time [ms]')
-    # ax4.set_ylabel('Voltage ')
+    oms_surr.set_xlabel('Time [ms]')
+    oms_surr.set_ylabel('Voltage ')
     oms_surr.set_ylim(top=10)
-    oms_surr.set_title('OMS cell #' + str(cell) + ' voltage')
+    oms_surr.set_title('OMS cell #' + str(cell) + ' in surround')
     oms_surr.axhline(OMS_thr, ls='--', c='C2', lw=2)
     
     # OMS center cell voltage plot
     cell = (RF_per_row//2) * RF_per_column + RF_per_column//2
     oms_center.plot(OMS_state_mon.t / ms, OMS_state_mon.v[cell], 'r')
-    # ax4.set_xlabel('Time [ms]')
-    # ax4.set_ylabel('Voltage ')
+    oms_center.set_xlabel('Time [ms]')
+    oms_center.set_ylabel('Voltage ')
     oms_center.set_ylim(top=10)
-    oms_center.set_title('OMS cell #' + str(cell) + ' voltage')
+    oms_center.set_title('OMS cell #' + str(cell) + ' in center')
     oms_center.axhline(OMS_thr, ls='--', c='C2', lw=2)
 
     # ax9.plot(A_f_fr_mon.t / ms, A_f_fr_mon.rate / Hz)
@@ -524,21 +524,21 @@ if __name__ == "__main__":
     
     # plt.show()
 
-    first_rf_plot, ax = plt.subplots(RF_N, 1, figsize=(10, 25))
-    for bp in np.arange(RF_N-1):
-        ax[bp].vlines(OMS_spike_times[bp], 0, 1)
-        ax[bp].set_xticks([])
-        ax[bp].set_yticks([])
-        ax[bp].spines['top'].set_visible(False)
-        ax[bp].spines['right'].set_visible(False)
-        ax[bp].spines['bottom'].set_visible(False)
-        ax[bp].spines['left'].set_visible(False)
-    ax[RF_N-1].vlines(OMS_spike_times[RF_N-1], 0, 1)
-    ax[RF_N-1].set_yticks([])
-    ax[RF_N-1].spines['top'].set_visible(False)
-    ax[RF_N-1].spines['right'].set_visible(False)
-    ax[RF_N-1].spines['bottom'].set_visible(False)
-    ax[RF_N-1].spines['left'].set_visible(False)
+    # first_rf_plot, ax = plt.subplots(RF_N, 1, figsize=(10, 25))
+    # for bp in np.arange(RF_N-1):
+    #     ax[bp].vlines(OMS_spike_times[bp], 0, 1)
+    #     ax[bp].set_xticks([])
+    #     ax[bp].set_yticks([])
+    #     ax[bp].spines['top'].set_visible(False)
+    #     ax[bp].spines['right'].set_visible(False)
+    #     ax[bp].spines['bottom'].set_visible(False)
+    #     ax[bp].spines['left'].set_visible(False)
+    # ax[RF_N-1].vlines(OMS_spike_times[RF_N-1], 0, 1)
+    # ax[RF_N-1].set_yticks([])
+    # ax[RF_N-1].spines['top'].set_visible(False)
+    # ax[RF_N-1].spines['right'].set_visible(False)
+    # ax[RF_N-1].spines['bottom'].set_visible(False)
+    # ax[RF_N-1].spines['left'].set_visible(False)
     # ax[len(indexes[0]) + 1].vlines(A_spike_times[0], 0, 1)
     # ax[len(indexes[0]) + 1].set_xticks([])
     # ax[len(indexes[0]) + 1].set_yticks([])
@@ -554,4 +554,4 @@ if __name__ == "__main__":
     # ax[len(indexes[0]) + 2].spines['bottom'].set_visible(False)
     # ax[len(indexes[0]) + 2].spines['left'].set_visible(False)
 
-    plt.show()
+    # plt.show()
