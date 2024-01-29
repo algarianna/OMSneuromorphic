@@ -1,0 +1,94 @@
+import numpy as np
+from bimvee.importIitYarp import importIitYarp
+from bimvee.importAe import importAe
+import pandas as pd
+width = 640
+height = 480
+#%%
+# events = importIitYarp(filePathOrName="/home/agardella/Desktop/camera_data", tsBits=30)
+events = importAe(filePathOrName="/home/agardella/Desktop/camera_data/data", tsBits=30)
+# ev_considered = 10000
+e_x = events['data']['ch0']['dvs']['x'] #ch0 is lest in Ae
+e_y = events['data']['ch0']['dvs']['y']
+e_ts = np.multiply(events['data']['ch0']['dvs']['ts'], 10**3)
+# e_ts = events['data']['ch0']['dvs']['ts']
+e_pol = events['data']['ch0']['dvs']['pol']
+e_idx = e_x * height + e_y
+
+del events
+
+# event_tuples = (zip(e_x, e_y, e_ts, e_pol))
+
+# Keeping only positive polarity events to reduce the data load
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! controlla prima di fare cazzate
+e_x = np.array(e_x)
+e_y = np.array(e_y)
+e_pol = np.array(e_pol)
+pass
+e_x = e_x[np.where(e_pol==True)]
+e_y = e_y[np.where(e_pol==True)]
+e_ts = e_ts[np.where(e_pol==True)]
+e_pol = e_pol[np.where(e_pol==True)]
+idx = e_x * height + e_y
+
+
+# take only the first n steps
+# e_x = e_x[:100]
+# e_y = e_y[:100]
+# e_ts = e_ts[:100]
+# e_pol = e_pol[:100]
+
+event_tuples = (zip(e_x, e_y, e_ts, e_pol))
+
+#%%
+# Initialize a dictionary to store the indices of each unique combination
+unique_combinations_indices = {}
+
+# Iterate through the event tuples and store their indices
+# id_unique = 0
+# for index, event_tuple in enumerate(event_tuples):
+#     if event_tuple not in unique_combinations_indices:
+#         unique_combinations_indices[id_unique] = event_tuples[index]
+#     else:
+#         print(f"Duplicate combination {event_tuple} found at indices: {index}")
+#     id_unique += 1
+# pass
+
+
+for index, event_tuple in enumerate(event_tuples):
+    if event_tuple not in unique_combinations_indices:
+        unique_combinations_indices[event_tuple] = [index]
+    else:
+        unique_combinations_indices[event_tuple].append(index)
+
+# Find and print the duplicate combinations along with their indices
+duplicate_indices = []
+for event_tuple, dublicates_idx in unique_combinations_indices.items():
+    if len(dublicates_idx) > 1:
+        print(f"Duplicate combination {event_tuple} found at indices: {dublicates_idx}")
+        for idx in dublicates_idx:
+            duplicate_indices.append(idx)
+
+# only delete if duplicates given
+if len(duplicate_indices) > 0:
+    duplicate_indices = np.sort(duplicate_indices)
+    duplicate_indices = duplicate_indices[::-1]
+    e_x = np.delete(e_x, duplicate_indices)
+    e_y = np.delete(e_y, duplicate_indices)
+    e_ts = np.delete(e_ts, duplicate_indices)
+    e_pol = np.delete(e_pol, duplicate_indices)
+
+# e_x, e_y, e_ts, e_pol = list(zip(*event_tuples))
+e_idx = e_x * height + e_y
+
+events = {"x": [], "y": [], "ts": [], "pol": [], "idx": []}
+events['x']=e_x
+events['y']=e_y
+events['ts']=e_ts
+events['pol']=e_pol
+events['idx']=e_idx
+
+
+events = pd.DataFrame(events).sort_values(by='ts').to_dict('list')
+np.sort(events['ts'])
+np.save("events_eye_only_pp.npy", events)
