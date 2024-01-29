@@ -1,8 +1,10 @@
 # import matplotlib.pyplot as plt
+#%%
 import numpy as np
 from brian2 import *
 from brian2tools import *
 from bimvee.importIitYarp import importIitYarp
+from bimvee.importAe import importAe
 
 # matplotlib.use('TkAgg')
 
@@ -133,72 +135,188 @@ def plot_mean_firing_rate(spike_train, bin_size):
     plt.show()
 
 
-def mindiff(arr, n):
+def mindiff(arr):
     # Sort array in non-decreasing order
     arr = sorted(arr)
     # Initialize difference as infinite
-    diff = 10 ** 20
+    # diff = 10 ** 20
     # Find the min diff by comparing adjacent
     # pairs in sorted array
-    for i in range(n - 1):
-        if arr[i + 1] - arr[i] < diff:
+    diff = arr[-1] - arr[0]
+    for i in range(len(arr)-1):
+        if 0 < arr[i + 1] - arr[i] < diff:
             diff = arr[i + 1] - arr[i]
     # Return min diff
     return diff
 
-
+#%%
 if __name__ == "__main__":
-    width = 640
-    height = 480
+    width = 640 # 16
+    height = 480 # 16
     N = width * height
     coordinates = [(x, y) for x in range(width) for y in range(height)]
-    time = 1  # second    last event time
+    sim_time = 1  # second    last event time
     # t_period = round(time / len(coordinates), 4)   # second
     # t_period = 1/8 * second
     # events = create_events(coordinates, height, time)
 
 
     
-    events_file = "events_eye_object_drift.npy"
+    events_file = "events_eye_only_pp.npy"
     events = np.load(events_file, allow_pickle='TRUE').item()
-    event_tuples = list(zip(events["x"], events["y"], events["ts"], events["pol"], events["idx"]))
+    # event_tuples = list(zip(events["x"], events["y"], events["ts"], events["pol"], events["idx"]))
 
 
+    #%%
+    # events = importIitYarp(filePathOrName="/home/agardella/Desktop/camera_data", tsBits=30)
+    # events = importAe(filePathOrName="/home/agardella/Desktop/camera_data/data", tsBits=30)
+    # ev_considered = 10000
+    # e_x = events['data']['ch0']['dvs']['x'][ev_considered] #ch0 is lest in Ae
+    # e_y = events['data']['ch0']['dvs']['y'][ev_considered]
+    # e_ts = np.multiply(events['data']['ch0']['dvs']['ts'][ev_considered], 10**3)
+    # # e_ts = events['data']['ch0']['dvs']['ts']
+    # e_pol = events['data']['ch0']['dvs']['pol'][ev_considered]
+    # e_idx = e_x * height + e_y
 
-    # events = importIitYarp(filePathOrName="/home/agardella/Desktop/OMSneuromorphic/data/", tsBits=30)
-    # e_x = events['data']['left']['dvs']['x']
-    # e_y = events['data']['left']['dvs']['y']
-    # e_ts = np.multiply(events['data']['left']['dvs']['ts'], 10**3)
-    # e_pol = events['data']['left']['dvs']['pol']
+    # del events
 
-    # event_tuples = list(zip(e_x, e_y, e_ts, e_pol))
+    # event_tuples = (zip(e_x, e_y, e_ts, e_pol))
 
+    # Keeping only positive polarity events to reduce the data load
+    # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! controlla prima di fare cazzate
+    # e_x = np.array(e_x)
+    # e_y = np.array(e_y)
+    # e_pol = np.array(e_pol)
+    # pass
+    # e_x = e_x[np.where(e_pol==True)]
+    # e_y = e_y[np.where(e_pol==True)]
+    # e_ts = e_ts[np.where(e_pol==True)]
+    # e_pol = e_pol[np.where(e_pol==True)]
+    # idx = e_x * height + e_y
+
+
+    # take only the first n steps
+    # e_x = e_x[:100]
+    # e_y = e_y[:100]
+    # e_ts = e_ts[:100]
+    # e_pol = e_pol[:100]
+
+    # event_tuples = (zip(e_x, e_y, e_ts, e_pol))
+
+    
+
+    #%%
+    # # Time window subdivision plot
+    # toi = 0.0
+    # time_step = 1  # ms
+    # time_window = 5  # ms
+    # still_in_time = True
+    # event_count_list = []
+    # while still_in_time:
+    #     idc = np.where(toi <= e_ts)[0]
+    #     if len(idc)  == 0:
+    #         # when no spikes given in time of interest (toi) until end of recording stop
+    #         break
+    #     else:
+    #         # otherwise we still have spikes in time of interest (toi) until end of recording stop
+    #         # lets check how many fall in the time window (toi - (toi+window_size))
+    #         idc = idc[:np.where(e_ts[idc] < toi+time_window)[0][-1]]
+    #         if len(idc) == 0:
+    #             # if we do not find spikes in that time window add 0
+    #             nb_events = 0
+    #         else:
+    #             # otherwise count spikes
+    #             nb_events = len(idc)
+    #         # add number of spikes to list and update toi with toi + time_step
+    #         event_count_list.append(nb_events)
+    #         toi += time_step
+    #         pass
+    # event_count_array = np.array(event_count_list)  # convert list to numpy array
+
+    # # lets visualize the results
+    # # fig_spike_count = plt.figure("spike count", figsize=(12, 9))
+    # # ax_spike_count = fig_spike_count.add_subplot(1, 1, 1)
+    # # ax_spike_count.plot(event_count_list)
+    # # plt.show(fig_spike_count)
+
+    # plt.figure("spike count", figsize=(12, 9))
+    # # ax_spike_count = fig_spike_count.add_subplot(1, 1, 1)
+    # plt.plot(event_count_array)
+    # # plt.show()
+
+    # # Fourier transform to look if there is a 60 Hz screen effect. Spoiler: there is not
+    # n = len(event_count_array)
+    # k = np.arange(n)
+    # T = int(n/(1/time_step))
+    # frq = k/T
+    # freq = frq[range(int(n/2))]
+    # freq_anal = np.fft.fft(event_count_array, axis=0)/n
+    # freq_anal = freq_anal[range(int(n/2))]
+    # plt.figure("spike frequency", figsize=(12, 9))
+    # # ax_spike_count = fig_spike_count.add_subplot(1, 1, 1)
+    # plt.plot(freq_anal)
+    # plt.show()
+    # pass
+
+    #%%
     # Initialize a dictionary to store the indices of each unique combination
-    unique_combinations_indices = {}
+    # unique_combinations_indices = {}
 
     # Iterate through the event tuples and store their indices
+    # id_unique = 0
+    # for index, event_tuple in enumerate(event_tuples):
+    #     if event_tuple not in unique_combinations_indices:
+    #         unique_combinations_indices[id_unique] = event_tuples[index]
+    #     else:
+    #         print(f"Duplicate combination {event_tuple} found at indices: {index}")
+    #     id_unique += 1
+    # pass
 
-    for index, event_tuple in enumerate(event_tuples):
-        if event_tuple not in unique_combinations_indices:
-            unique_combinations_indices[event_tuple] = [index]
-        else:
-            unique_combinations_indices[event_tuple].append(index)
+
+    # for index, event_tuple in enumerate(event_tuples):
+    #     if event_tuple not in unique_combinations_indices:
+    #         unique_combinations_indices[event_tuple] = [index]
+    #     else:
+    #         unique_combinations_indices[event_tuple].append(index)
 
     # Find and print the duplicate combinations along with their indices
-    for event_tuple, indices in unique_combinations_indices.items():
-        if len(indices) > 1:
-            print(f"Duplicate combination {event_tuple} found at indices: {indices}")
+    # duplicate_indices = []
+    # for event_tuple, dublicates_idx in unique_combinations_indices.items():
+    #     if len(dublicates_idx) > 1:
+    #         print(f"Duplicate combination {event_tuple} found at indices: {dublicates_idx}")
+    #         for idx in dublicates_idx:
+    #             duplicate_indices.append(idx)
+    
+    # only delete if duplicates given
+    # if len(duplicate_indices) > 0:
+    #     duplicate_indices = np.sort(duplicate_indices)
+    #     duplicate_indices = duplicate_indices[::-1]
+    #     e_x = np.delete(e_x, duplicate_indices)
+    #     e_y = np.delete(e_y, duplicate_indices)
+    #     e_ts = np.delete(e_ts, duplicate_indices)
+    #     e_pol = np.delete(e_pol, duplicate_indices)
 
+    # e_x, e_y, e_ts, e_pol = list(zip(*event_tuples))
+    # e_idx = e_x * height + e_y
+
+    # pass
+    #%%
     # visualisation(height, width, events, t_period)
-    # defaultclock.dt = 0.00047 * usecond
+    min_dt = mindiff(events['ts'])
+    # %%
+    defaultclock.dt = min_dt *second
+    # DVS = SpikeGeneratorGroup(N, events['idx'], events['ts'] * second)
+    # e_idx = e_idx[:10]
+    # e_ts = e_ts[:10]
+    
     DVS = SpikeGeneratorGroup(N, events['idx'], events['ts'] * second)
     eqs = '''
     dv/dt = (I-v)/tau : 1  
     I : 1
     tau : second
     '''
-    RF_per_row = 40 # RF size is 16x16, similar to having diameter 150 um
-    RF_per_column = 30
+    RF_per_row = 40 # 8 # RF size is 16x16, similar to having diameter 150 um
+    RF_per_column = 30 # 8
     RF_width: int = width // RF_per_row  # RFs pixel size is RF_width x RF_height
     RF_height: int = height // RF_per_column
     RF_size = RF_width * RF_height
@@ -223,13 +341,14 @@ if __name__ == "__main__":
     indexes = np.resize(indexes, (RF_N, RF_width * RF_height))    
    
     # Down sampling from RF to OMS
+    # forse e' il caso di rifare sti stimoli
     # ERO QUI A DOWNSAMPLARE DA RF A OMS MI RACCOMANDO CHECK VARIABILI E FARE FUNZ
-    OMS_per_row = width // 2  # OMS size is 2x2, similar to having diameter 450 um
-    OMS_per_column = height // 2
-    OMS_width: int = 2  # OMS pixel size is OMS_width x _height
-    OMS_height: int = 2
-    OMS_size = OMS_width * OMS_height
-    OMS_N = N // (OMS_size)  # number of OMS
+    # OMS_per_row = RF_per_row // 2  # OMS size is 2x2, similar to having diameter 450 um
+    # OMS_per_column = RF_per_column // 2
+    # OMS_width: int = 2  # OMS pixel size is OMS_width x _height
+    # OMS_height: int = 2
+    # OMS_size = OMS_width * OMS_height
+    # OMS_N = N // (OMS_size)  # number of OMS
 
     # Adding a threshold and the reset to 0 after a spike. (to add RP : refractory  = 3*ms)
     A_thr = 4
@@ -237,8 +356,8 @@ if __name__ == "__main__":
     A.tau = 10 * ms
 
     OMS_thr = 2
-    OMS = NeuronGroup(OMS_N, eqs, threshold='v>OMS_thr', reset='v=0', method='exact') # refractory=3*ms
-    RF.tau = 100 * ms
+    OMS = NeuronGroup(RF_N, eqs, threshold='v>OMS_thr', reset='v=0', method='exact') # refractory=3*ms
+    OMS.tau = 100 * ms
 
     # Downsampling from DVS to BP
     S_DVS_RF = Synapses(DVS, RF, on_pre='v_post +=1')
@@ -257,7 +376,7 @@ if __name__ == "__main__":
     # Synapse between RF cells and OMS - slow
     RF_to_OMS = Synapses(RF, OMS, on_pre='v_post +=1')
     RF_to_OMS.connect('i==j')
-    RF_to_OMS.delay = 25 * ms
+    # RF_to_OMS.delay = 25 * ms
 
     DVS_spike_mon = SpikeMonitor(DVS)
     # DVS_state_mon = StateMonitor(DVS, 'v', record=True)  # Recording state variable v during a run
@@ -277,7 +396,8 @@ if __name__ == "__main__":
     OMS_fr_mon = PopulationRateMonitor(OMS)
 
     sim_time = 500 * ms
-    run(sim_time)
+    print("before sim starts")
+    run(duration=sim_time)
     # figure()
     # brian_plot(DVS_spike_mon)
     # brian_plot(RF_spike_mon)
@@ -299,21 +419,21 @@ if __name__ == "__main__":
     DVS_spike_times = DVS_spike_mon.spike_trains()
 
     # DVS spikes visualization
-    # dvs, ax = plt.subplots(width, height)
-    # dvs.suptitle("DVS Spikes")
-    # for idx in np.arange(width):
-    #     for idy in np.arange(height):
-    #         ax[idx, idy].vlines(DVS_spikes[idx + idy * height], 0, 1)
-    #         ax[idx, idy].set_xticks([])
-    #         ax[idx, idy].set_yticks([])
-    #         ax[idx, idy].set_xlim(0, sim_time / second)
-    #         # ax[idx, idy].axis('off')
-    # dvs.show()
+    dvs, ax = plt.subplots(width, height)
+    dvs.suptitle("DVS Spikes")
+    for idx in np.arange(width):
+        for idy in np.arange(height):
+            ax[idx, idy].vlines(DVS_spike_times[idx + idy * height], 0, 1)
+            ax[idx, idy].set_xticks([])
+            ax[idx, idy].set_yticks([])
+            ax[idx, idy].set_xlim(0, sim_time / second)
+            # ax[idx, idy].axis('off')
+    dvs.show()
 
-    # figure()
-    # plt.plot(DVS_spike_mon.i, DVS_spike_mon.t / ms, '.')
-    # ylim(0, 2500)
-    # xlim(0, sim_time)
+    figure()
+    plt.plot(DVS_spike_mon.i, DVS_spike_mon.t / ms, '.')
+    ylim(0, 2500)
+    xlim(0, sim_time)
 
     A_spike_times = A_spike_mon.spike_trains()
 
@@ -382,7 +502,7 @@ if __name__ == "__main__":
     #     OMS_frame = np.zeros((width, width))
 
     amacrines, ((rf_surr, rf_center), (amacrine, amacrine_copy), (oms_surr, oms_center)) = plt.subplots(3, 2, figsize=(25, 10))
-    amacrines.suptitle('Stimuli = ' + events_file)
+    amacrines.suptitle('Stimuli = eye_only_psychopy')
     # DVS surround cell voltage plot
     # cell = 0
     # dvs_surr.plot(DVS_state_mon.t / ms, DVS_state_mon.v[cell], 'r')
@@ -426,7 +546,7 @@ if __name__ == "__main__":
     amacrine.set_ylim(top=10)
     amacrine.set_title('Amacrine cell voltage')
     amacrine.axhline(A_thr, ls='--', c='C2', lw=2)
-    amacrine.set_ylim([0, 30])
+    amacrine.set_ylim([0, 100])
 
     # Amacrine voltage plot
     amacrine_copy.plot(A_state_mon.t/ms, A_state_mon.v[0], 'r')
@@ -435,7 +555,7 @@ if __name__ == "__main__":
     amacrine_copy.set_ylim(top=10)
     amacrine_copy.set_title('Amacrine cell voltage')
     amacrine_copy.axhline(A_thr, ls='--', c='C2', lw=2)
-    amacrine_copy.set_ylim([0, 30])
+    amacrine_copy.set_ylim([0, 100])
 
     
     # OMS surround cell voltage plot
@@ -476,6 +596,7 @@ if __name__ == "__main__":
     #     ax10.set_title('OMS cell #' + str(cell) + ' firing rate')
 
     plt.show()
+    # pass
 
     # Population spikes visualization
     # rasterplot, (ax1, ax2, ax3, ax4, ax5, ax6, ax7) = plt.subplots(7, 1, figsize=(10, 25))
